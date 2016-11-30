@@ -32,6 +32,8 @@ int main(void)
     SysCtlClockSet(SYSCTL_SYSDIV_5|SYSCTL_USE_PLL|SYSCTL_OSC_MAIN|SYSCTL_XTAL_16MHZ);
 
     EF_void_UserInterface_Init ();
+
+
     while (1)
     {
         EF_v_UI_SystemStates ();

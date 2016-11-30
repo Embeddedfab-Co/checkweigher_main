@@ -327,7 +327,7 @@ BOOLEAN  EF_BOOLEAN_Scale_Get_Stable_Weight (volatile U32_t * u32WeightInGrams, 
      EF_void_UART_SendArray( SCALE_UART, (U8_t*) PrintKeyCommand, strlen(PrintKeyCommand));
      /* Wait for Response until 5 sec (Large delay to wait stabililty) , response like: "  4.567 Kg G"
       * wait until getting the start byte of response frame " " . if Scale was not stable, no data will be received*/
-     b_ReturnedStatus = EF_BOOLEAN_SCALE_ReadUntilExpectedKeyword ((U8_t*)" ", 1, 5000);
+     b_ReturnedStatus = EF_BOOLEAN_SCALE_ReadUntilExpectedKeyword ((U8_t*)" ", 1, 100);
 
      if (b_ReturnedStatus == TRUE)
      {

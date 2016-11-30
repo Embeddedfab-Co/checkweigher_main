@@ -142,11 +142,11 @@ void EF_void_PrintMenus_CalWeightShow (U32_t u32CatNumber)
 
 void EF_void_PrintMenus_CalEditPosNeg (U32_t u32CatNumber)
 {
-//    U32_t u32CatWeight     = 0;
+    U32_t u32CatWeight     = 0;
 
 
 #ifdef USING_VARIABLE_CAT_WEIGHT
-//    EF_u8_PrintMenu_GetCategoryWeight (u32CatNumber , &u32CatWeight );
+    EF_u8_PrintMenu_GetCategoryWeight (u32CatNumber , &u32CatWeight );
 #else
     if (u8CatNumber > 1)
     {
@@ -158,10 +158,10 @@ void EF_void_PrintMenus_CalEditPosNeg (U32_t u32CatNumber)
     }
 #endif
 
-    EF_void_PrintMenus_SendValue     ( EDIT_CATEGORY_NUM_V       , u32CatNumber, TRUE );
-//    EF_void_PrintMenus_SendValue     ( SHOW_CATEGORY_WEIGHT_V    , u32CatWeight     , TRUE );  //todo as show Menu
-    EF_void_PrintMenus_SendValue     ( EDIT_POSITIVE_TOLERANCE_V , 0                 , TRUE );
-    EF_void_PrintMenus_SendValue     ( EDIT_NEGATIVE_TOLERANCE_V , 0                 , TRUE );
+    EF_void_PrintMenus_SendValue     ( EDIT_CATEGORY_NUM_V       , u32CatNumber , TRUE );
+    EF_void_PrintMenus_SendValue     ( EDIT_CATEGORY_WEIGHT_V    , u32CatWeight , TRUE );
+    EF_void_PrintMenus_SendValue     ( EDIT_POSITIVE_TOLERANCE_V , 0            , TRUE );
+    EF_void_PrintMenus_SendValue     ( EDIT_NEGATIVE_TOLERANCE_V , 0            , TRUE );
     EF_void_PrintMenus_DisplayPhoto  ( EDIT_POSITIVE_NEG_PHOTO );
 
 }
@@ -181,61 +181,24 @@ void EF_void_PrintOperation (U32_t u32BarCodeWeigth, U32_t u32ScaleWeigth, BOOLE
 
 
     s32Difference = u32BarCodeWeigth - u32ScaleWeigth;
-    /* if Scale< BarCode --> s32Difference >= 0   */
-    if (s32Difference >= 0)
-    {
-
-        /* if this diff. is Available --> ACCEPT */
-        if ( b_isAcceptPacket == TRUE)
-        {
-#ifdef NEW_MENUS_UPDATED
-            EF_void_PrintMenus_DisplayPhoto (ACCEPT_OPERATION_ID);
-
-#else
-            EF_void_PrintMenus_DisplayPhoto  ( OPERATION_PHOTO );  //todo remove or what ?
-#endif
-
-        }
-        /* else if this diff. is greater than the Avaliable Tolerance --> UNDERLOAD */
-        else
-        {
-#ifdef NEW_MENUS_UPDATED
-            EF_void_PrintMenus_DisplayPhoto (UNDERLOAD_OPERATION_ID);
-
-#else
-            EF_void_PrintMenus_DisplayPhoto  ( OPERATION_PHOTO );  //todo remove or what ?
-#endif
-        }
-    }
-    else
-    {
-        s32Difference = u32ScaleWeigth - u32BarCodeWeigth ;
-
-        /* if this diff. is Available --> ACCEPT */
-        if ( b_isAcceptPacket == TRUE)
-        {
-#ifdef NEW_MENUS_UPDATED
-            EF_void_PrintMenus_DisplayPhoto (ACCEPT_OPERATION_ID);
-
-#else
-            EF_void_PrintMenus_DisplayPhoto  ( OPERATION_PHOTO );  //todo remove or what ?
-#endif
-        }
-        /* else if this diff. is greater than the Avaliable Tolerance --> UNDERLOAD */
-        else
-        {
-#ifdef NEW_MENUS_UPDATED
-            EF_void_PrintMenus_DisplayPhoto (OVERLOAD_OPERATION_ID);
-
-#else
-            EF_void_PrintMenus_DisplayPhoto  ( OPERATION_PHOTO );  //todo remove or what ?
-#endif
-        }
-    }
 
     EF_void_PrintMenus_SendValue ( OPERATION_BARCODE_WEIGHT_V, u32BarCodeWeigth, TRUE );
     EF_void_PrintMenus_SendValue ( OPERATION_SCALE_WEIGHT_V  , u32ScaleWeigth, TRUE );
-    EF_void_PrintMenus_SendValue ( OPERATION_DIFFERENCE_V    , s32Difference , TRUE);
+
+    if (b_isAcceptPacket == ACCEPT_PACKET)
+    {
+        EF_void_PrintMenus_DisplayPhoto  ( ACCEPT_OPERATION_PHOTO );
+    }
+    else if  (b_isAcceptPacket == OVERLOAD_PACKET)
+    {
+        EF_void_PrintMenus_DisplayPhoto  ( OVERLOAD_OPERATION_PHOTO );
+    }
+    else if  (b_isAcceptPacket == UNDERLOAD_PACKET)
+    {
+        EF_void_PrintMenus_DisplayPhoto  ( UNDERLOAD_OPERATION_PHOTO );
+    }
+
+    EF_void_PrintMenus_SendValue ( OPERATION_DIFFERENCE_V    , abs(s32Difference) , TRUE);
 
 }
 

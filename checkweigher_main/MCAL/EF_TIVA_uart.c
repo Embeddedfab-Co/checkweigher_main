@@ -158,16 +158,20 @@ BOOLEAN EF_BOOLEAN_UART_GetChar(U8_t UART_Number,U8_t * returnedValue)
      *Returns true if there is data in the receive FIFO or
      *Returns false if there is no data in the receive FIFO.*/
     while( (!( UARTCharsAvail(UART_PinConfiguration_Array[UART_Number][UART_BASE_ELEMENT]))) &&
-           (!EF_BOOLEAN_TimerCheck(UART_TIMER_ID)) );
+           (!EF_BOOLEAN_Timer_IsTimedOut(UART_TIMER_ID)) );
 
-    EF_void_TimerStop(UART_TIMER_ID);
-    EF_void_TimerReset(UART_TIMER_ID);
-    reciveFlag     = TRUE;
 
-    if(!( UARTCharsAvail(UART_PinConfiguration_Array[UART_Number][UART_BASE_ELEMENT])))
+    if(( UARTCharsAvail(UART_PinConfiguration_Array[UART_Number][UART_BASE_ELEMENT]) == FALSE) && (EF_BOOLEAN_Timer_IsTimedOut(UART_TIMER_ID) == TRUE))
     {
         reciveFlag = FALSE;
     }
+    else
+    {
+        reciveFlag     = TRUE;
+    }
+    EF_void_TimerStop(UART_TIMER_ID);
+    EF_void_TimerReset(UART_TIMER_ID);
+
     //returned -1 if there is no data
     *returnedValue = UARTCharGetNonBlocking(UART_PinConfiguration_Array[UART_Number][UART_BASE_ELEMENT]);
 

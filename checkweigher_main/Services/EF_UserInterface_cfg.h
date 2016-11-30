@@ -22,6 +22,11 @@
 #define UNDERLOAD_PACKAGE_ADD_EEPROM     408           /* The place in EEPROM to Save the UnderLoad Package Number */
 #define OVERLOAD_PACKAGE_ADD_EEPROM      416           /* The place in EEPROM to Save the OverLoad Package Number */
 
+#define CORRECT_WEIGHT_ADD_EEPROM        424           /* The place in EEPROM to Save the Correct Package Number */
+#define UNDERLOAD_WEIGHT_ADD_EEPROM      432           /* The place in EEPROM to Save the UnderLoad Package Number */
+#define OVERLOAD_WEIGHT_ADD_EEPROM       440           /* The place in EEPROM to Save the OverLoad Package Number */
+
+
 #define MAX_CATEGORY_WEIGTH              100000UL       /* MAx Weight for Category Values */
 
 #define MAX_SCALE_TRIALS                 3             /* MAx Number of Get Stable Weigth Trials */
@@ -47,28 +52,21 @@
 #define TIMER_EXPIRED_3Months_EEPROM_ADD 232        /* EEPROM ADD to save the 3Month Counter in it to disable Operation if Enabled TRAILS_3_MONTHS */
 
 #define FIRST_RELEASE_FLAG_EEPROM_ADD    228        /* EEPROM ADD to save FirstRelease flag to init Some Varablies when First Realease only */
-#define FIRST_RELEASE_FLAG_VALUE         34         /* Value in EEPROM to checked if it not saved --> init Some Varablies when First Realease only and save it */
+#define FIRST_RELEASE_FLAG_VALUE         13         /* Value in EEPROM to checked if it not saved --> init Some Varablies when First Realease only and save it */
 
 #define CATEGORY_WEIGHT_ARRAY_ADD        300        /* first Address of Category Weight Array in EEPROM (21 Place , every place was 4 bytes)*/
 
+#define RX_BUTTON_FRAME_LENGTH           6          /* The Data Frame Lenght of Button Frame */
+#define GET_VALUE_FRAME_LENGTH           8          /* The Data Frame Lenght of Value  Frame */
 
+#define BUTTON_VALUE_LENGTH              2          /* The Data Lenght of Button Address Value */
+#define DISPLAY_DATA_VALUE_LENGTH        4          /* The Data Lenght of Value  Address Value */
+#define SCREEN_MIN_FRAME_LENGTH          9          /* The Min Screen Frame Length */
 
+#define STUB_SCALE
+//#define BARCODE_SCALE
 
-#define VP_ADD_HIGH_ELEMENT       0
-#define VP_ADD_LOW_ELEMENT        1
-#define VALUE_HIGH_ELEMENT        3
-#define VALUE_LOW_ELEMENT         4
-
-#define RX_BUTTON_FRAME_LENGTH    6
-#define GET_VALUE_FRAME_LENGTH    8
-
-#define BUTTON_VALUE_LENGTH       2
-#define DISPLAY_DATA_VALUE_LENGTH 4
-#define SCREEN_MIN_FRAME_LENGTH   9
-//#define STUB_SCALE
-#define BARCODE_SCALE
-
-
+/* used in Edit tolerance when Save button is pressed , help to get the Two Values Correctly */
 enum FlagStatusAtEditTolerance{
   PREPARE_TO_EDIT,
   FIRST_EDITING,
@@ -113,5 +111,12 @@ enum{
     NEGATIVE_TOL
 }Pos_Neg_Tolenum;
 
+
+/* used as argument to Print Calculation Function , to defien the result of Packet */
+enum {
+    UNDERLOAD_PACKET,
+    ACCEPT_PACKET,
+    OVERLOAD_PACKET,
+}OperationResultEnum;
 
 #endif

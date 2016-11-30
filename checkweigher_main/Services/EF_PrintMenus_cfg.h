@@ -4,96 +4,111 @@
 
 #define SCREEN_UART_BAUDRATE      9600UL
 
+/* Frame Header */
 #define SCREEN_FRAME_HEADER_H     0x5A
 #define SCREEN_FRAME_HEADER_L     0xA5
+/* Frame Used Command */
 #define READ_DATA_COMMAND         0x83
 #define WRITE_DATA_COMMAND        0x82
 #define SEND_PHOTO_COMMAND        0x80
 
 
-/* System Button Address */
+/* System Button Address, its Value represent the Button Address */
 enum ButtonAddresses
 {
-  ESCAPE_STATE               = 0,
-  START_OPERATION_BUTTON     = 0xA000,
-  STOP_OPERATION_BUTTON      = 0xA002,
-  SELECT_ANALYSIS_BUTTON     = 0xA004,
-  CLEAR_ANALYSIS_BUTTON      = 0xA005,
-  CONFIRM_EDIT_BUTTON        = 0xA00f,
-  CONFIRM_SHOW_BUTTON        = 0x00AA,
-  SAVE_TOLERANACE_BUTTON     = 0xA006,
-  SELECT_EDIT_BUTTON         = 0x0007,
-  SELECT_SHOW_BUTTON         = 0x0008,
-  BACK_FROM_EDIT_BUTTON      = 0x00A6,
-  BACK_FROM_SHOW_BUTTON      = 0x00A7,
+    ESCAPE_STATE               = 0,
+    START_OPERATION_BUTTON     = 0xA000,
+    STOP_OPERATION_BUTTON      = 0xA002,
+    SELECT_ANALYSIS_BUTTON     = 0xA004,
+    CLEAR_ANALYSIS_BUTTON      = 0xA005,
+    CONFIRM_EDIT_BUTTON        = 0xA00f,
+    CONFIRM_SHOW_BUTTON        = 0x00AA,
+    SAVE_TOLERANACE_BUTTON     = 0xA006,
+    SELECT_EDIT_BUTTON         = 0x0007,
+    SELECT_SHOW_BUTTON         = 0x0008,
+    BACK_FROM_EDIT_BUTTON      = 0x00A6,
+    BACK_FROM_SHOW_BUTTON      = 0x00A7,
+    BACK_FROM_ANALYSIS_BUTTON  = 0x00A1,
+    SHOW_LIST_HIGH_BUTTON      = 0xB324,
+    SHOW_LIST_LOW_BUTTON       = 0xB320,
 };
 
 
 
-/* (_V) means Data Value Address */
+/* (_V) means Data Value Address , its Value represent the Value Address*/
 enum DataDisplayAddresses
 {
-  /* to Send these Values not receiving */
-  OPERATION_BARCODE_WEIGHT_V = 0xB130,
-  OPERATION_SCALE_WEIGHT_V   = 0xB134,
-  OPERATION_DIFFERENCE_V     = 0xB138,
+    /* to Send these Values not receiving */
+    OPERATION_BARCODE_WEIGHT_V = 0xB130,
+    OPERATION_SCALE_WEIGHT_V   = 0xB134,
+    OPERATION_DIFFERENCE_V     = 0xB138,
 
-  /* to Send these Values not receiving */
-  CORRECT_PACKETS_NUM_V      = 0xB100,
-  UNDERLOAD_PACKETS_NUM_V    = 0xB104,
-  OVERLOAD_PACKETS_NUM_V     = 0xB108,
+    /* to Send these Values not receiving */
+    CORRECT_PACKETS_NUM_V      = 0xB100,
+    UNDERLOAD_PACKETS_NUM_V    = 0xB104,
+    OVERLOAD_PACKETS_NUM_V     = 0xB108,
 
-  /* to send Zero and [Receive] this Value as Response */
-  ENTER_SHOW_CAT_NUM_V       = 0xB11C,
-  /* to Send these Values not receiving */
-  SHOW_CATEGORY_NUM_V        = 0xB10C,
-  SHOW_CATEGORY_WEIGHT_V     = 0xB110,
-  SHOW_POSITIVE_TOLERANCE_V  = 0xB114,
-  SHOW_NEGATIVE_TOLERANCE_V  = 0xB118,
+    /* to send Zero and [Receive] this Value as Response */
+    ENTER_SHOW_CAT_NUM_V       = 0xB11C,
+    /* to Send these Values not receiving */
+    SHOW_CATEGORY_NUM_V        = 0xB10C,
+    SHOW_CATEGORY_WEIGHT_V     = 0xB110,
+    SHOW_POSITIVE_TOLERANCE_V  = 0xB114,
+    SHOW_NEGATIVE_TOLERANCE_V  = 0xB118,
 
-  /* to send Zero and [Receive] this Value  as Response for System request */
-  ENTER_EDIT_CAT_NUM_V       = 0xB120,
-  /* to Send this Value */
-  EDIT_CATEGORY_NUM_V        = 0xB124,
-  /* to send zeros and [Receive] these Values  as Response for System request */
-  EDIT_POSITIVE_TOLERANCE_V  = 0xB128,
-  EDIT_NEGATIVE_TOLERANCE_V  = 0xB12C,
+    /* to send Zero and [Receive] this Value  as Response for System request */
+    ENTER_EDIT_CAT_NUM_V       = 0xB120,
+    /* to Send this Value */
+    EDIT_CATEGORY_NUM_V        = 0xB124,
+    EDIT_CATEGORY_WEIGHT_V     = 0xB13C,
+    /* to send zeros and [Receive] these Values  as Response for System request */
+    EDIT_POSITIVE_TOLERANCE_V  = 0xB128,
+    EDIT_NEGATIVE_TOLERANCE_V  = 0xB12C,
 
-  /* to Send these Error Values */
-  ERROR_CAT_MIN_NUMBER_V     = 0xB300,
-  ERROR_CAT_MAX_NUMBER_V     = 0xB304,
-  ERROR_SCALE_MIN_WEIGHT_V   = 0xB308,
-  ERROR_SCALE_MAX_WEIGHT_V   = 0xB30C,
-  ERROR_BARCODE_MIN_WEIGHT_V = 0xB318,
-  ERROR_BARCODE_MAX_WEIGHT_V = 0xB31C,
-  ERROR_MAX_TOLERANCE_V      = 0xB320
+    /* to Send these Error Values */
+    ERROR_CAT_MIN_NUMBER_V     = 0xB300,
+    ERROR_CAT_MAX_NUMBER_V     = 0xB304,
+    ERROR_SCALE_MIN_WEIGHT_V   = 0xB308,
+    ERROR_SCALE_MAX_WEIGHT_V   = 0xB30C,
+    ERROR_BARCODE_MIN_WEIGHT_V = 0xB318,
+    ERROR_BARCODE_MAX_WEIGHT_V = 0xB31C,
+    ERROR_MAX_TOLERANCE_V      = 0xB320
 };
 
 
 
-/* System Photos Addresses */
+/* System Photos Addresses , its Value represent the Photo ID */
 enum PhotosAddresses {
-  OPERATION_PHOTO            = 9,
-  ANALYSIS_PHOTO             = 31,
-  ENTER_EDIT_CAT_NUM_PHOTO   = 39,
-  EDIT_POSITIVE_NEG_PHOTO    = 40,
-  ENTER_SHOW_CAT_NUM_PHOTO   = 38,
-  SHOW_TOLERANCE_PHOTO       = 33,
-  DATA_IS_SAVED_PHOTO        = 24,
-  START_OPERATION_PHOTO      = 6,
-  /*----- Errors Photos -------*/
-  ERROR_ENTER_CAT_NUM_PHOTO  = 14,
-  ERROR_MAX_TOLERANCE_PHOTO  = 27,
-  ERROR_SCALE_WEIGHT_PHOTO   = 17,
-  ERROR_STABLE_SCALE_PHOTO   = 16,
-  ERROR_PROXIMITY_PHOTO      = 13,
-  ERROR_BARCODE_WEIGHT_PHOTO = 18,
-  ERROR_WATING_BARCODE_PHOTO = 15,
-  ERROR_UNSAVED_DATA_PHOTO   = 25,
+    MAIN_SELECTION_PHOTO       = 6,
+    OPERATION_PHOTO            = 15,
+    ANALYSIS_PHOTO             = 61,
+    ENTER_EDIT_CAT_NUM_PHOTO   = 21,
+    EDIT_POSITIVE_NEG_PHOTO    = 50,
+    ENTER_SHOW_CAT_NUM_PHOTO   = 43,
+    SHOW_TOLERANCE_PHOTO       = 64,
+    DATA_IS_SAVED_PHOTO        = 41,
+    START_OPERATION_PHOTO      = 10,
+    ACCEPT_OPERATION_PHOTO     = 15,
+    OVERLOAD_OPERATION_PHOTO   = 13,
+    UNDERLOAD_OPERATION_PHOTO  = 14,
+    /*----- Errors Photos -------*/
+    ERROR_ENTER_CAT_NUM_PHOTO  = 34,
+    ERROR_MAX_TOLERANCE_PHOTO  = 40,
+    ERROR_SCALE_WEIGHT_PHOTO   = 37,
+    ERROR_STABLE_SCALE_PHOTO   = 36,
+    ERROR_PROXIMITY_PHOTO      = 33,
+    ERROR_BARCODE_WEIGHT_PHOTO = 38,
+    ERROR_WATING_BARCODE_PHOTO = 35,
+    ERROR_UNSAVED_DATA_PHOTO   = 39,
 };
 
 
-
+/* used to toggle between Analysis Print Cat Numbers and Print Weights */
+enum AnalysisPrintToggleEnum
+{
+    ANALYSIS_PRINT_NUMBERS,
+    ANALYSIS_PRINT_WEIGHTS
+};
 
 
 #endif
