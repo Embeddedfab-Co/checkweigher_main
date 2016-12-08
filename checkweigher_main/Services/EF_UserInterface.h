@@ -43,6 +43,19 @@
 ***********************************************************************/
 void EF_void_UserInterface_Init ();
 
+
+/*********************************************************************
+ * Function    : EF_u8_GetCategoryWeight (U8_t u8CategoryNumber, U32_t* u32CategoryWeight)
+ *
+ * DESCRIPTION : write and redfine the Category Weight for the corresponding Category Number.
+ *
+ * PARAMETERS  : u8CategoryNumber  : category number from 1 to 21
+ *               u32CategoryWeight : Category Weight by Grams.
+ *
+ * Return Value: False if Error in Category Number or in EEPROM
+ ***********************************************************************/
+U8_t EF_u8_UI_GetCategoryWeight (U32_t u32CategoryNumber, U32_t* u32CategoryWeight);
+
 U16_t EF_u16_UI_ParseUartBuffer (U8_t * DataPtr, U8_t * DataLength );
 
 void  EF_v_UI_SystemStates ();

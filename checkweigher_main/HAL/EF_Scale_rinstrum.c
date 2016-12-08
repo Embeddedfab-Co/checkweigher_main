@@ -266,7 +266,7 @@ BOOLEAN  EF_BOOLEAN_Scale_Get_Gross_Weight (U32_t * u32WeightInGrams, BOOLEAN * 
     EF_void_UART_SendArray( SCALE_UART, (U8_t*) GetGrossCommand, strlen(GetGrossCommand));
 
     /* Get the Response */
-    u8ReturnedStatus = EF_BOOLEAN_UART_GetArray( SCALE_UART,  ReturnedArray, '\n');
+    u8ReturnedStatus = EF_BOOLEAN_UART_GetArray( SCALE_UART,  ReturnedArray, '\n',15);
 
     if (u8ReturnedStatus == FALSE)
     {
@@ -332,7 +332,7 @@ BOOLEAN  EF_BOOLEAN_Scale_Get_Stable_Weight (volatile U32_t * u32WeightInGrams, 
      if (b_ReturnedStatus == TRUE)
      {
          /* get the Response Array*/
-         b_ReturnedStatus = EF_BOOLEAN_UART_GetArray( SCALE_UART,  ReturnedArray, '\n');
+         b_ReturnedStatus = EF_BOOLEAN_UART_GetArray( SCALE_UART,  ReturnedArray, '\n' , 20);
 
           if (b_ReturnedStatus == TRUE)
           {
@@ -532,7 +532,7 @@ void ISR_Scale_GetStableWeigth ()
     if (u8Rxdata == ' ')
     {
         /* if find " " , get Array to reach the end of frame */
-        u8ReturnedStatus = EF_BOOLEAN_UART_GetArray( SCALE_UART,  ReturnedArray, '\n');
+        u8ReturnedStatus = EF_BOOLEAN_UART_GetArray( SCALE_UART,  ReturnedArray, '\n',15);
         if (u8ReturnedStatus == FALSE)
         {
             /* Problem in UART Get */

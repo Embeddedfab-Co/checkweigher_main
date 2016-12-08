@@ -30,6 +30,7 @@
 #include "EF_IP_OP_card.h"
 #include "../Utilities/std_types.h"
 #include "string.h"
+#include "../MCAL/EF_TIVA_DIO.h"
 
 #define IP_OP_CARD_UART              UART5
 #define RX_ARRAY_LENGTH              3          /* number of receiving array elements , Kit send it as Response */
@@ -116,8 +117,11 @@ UART_cfg_str  uart_cfg = {IP_OP_CARD_UART, 9600, NUMBER_OF_BITS_8, ONE_STOP_BIT,
  **********************************************************************/
 BOOLEAN EF_BOOLEAN_IOCard_Init(void)
 {
-    EF_void_UART_Init (&uart_cfg);
-    _delay_ms(1000);
+    EF_S8_t_DIO_InitPin ('e',3,INPUT);
+    GPIOPadConfigSet (GPIO_PORTE_BASE, GPIO_PIN_3 ,GPIO_STRENGTH_2MA,GPIO_PIN_TYPE_STD_WPD);
+
+//    EF_void_UART_Init (&uart_cfg);
+//    _delay_ms(1000);
 
     return 0;
 }
@@ -605,10 +609,9 @@ BOOLEAN EF_BOOLEAN_IOCard_ReadStartStopSwitch()
 BOOLEAN EF_BOOLEAN_IOCard_ReadPhotoCell()
 {
     U8_t u8ReturnStatus = 0;
-    U8_t u8ReturnData   = 0;
 
 
-    u8ReturnStatus = EF_BOOLEAN_IOCard_Read_Input((U8_t*)ReadInputCommandArray[PHOTO_CELL_STATUS],&u8ReturnData);
+    u8ReturnStatus = EF_S8_DIO_CheckPin ('e' , 3);
 
     return u8ReturnStatus;
 }

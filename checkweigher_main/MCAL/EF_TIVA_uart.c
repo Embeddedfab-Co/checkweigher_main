@@ -152,16 +152,18 @@ void EF_void_UART_Init(UART_cfg_str *uart_cfg)
 BOOLEAN EF_BOOLEAN_UART_GetChar(U8_t UART_Number,U8_t * returnedValue)
 {
     BOOLEAN reciveFlag   = FALSE;
+    U32_t  u32ReceivedData = 0;
+
+
     EF_void_TimerStart(UART_TIMER_ID);
     /* USART Transmit Complete */
     /*UARTCharsAvail:
      *Returns true if there is data in the receive FIFO or
      *Returns false if there is no data in the receive FIFO.*/
     while( (!( UARTCharsAvail(UART_PinConfiguration_Array[UART_Number][UART_BASE_ELEMENT]))) &&
-           (!EF_BOOLEAN_Timer_IsTimedOut(UART_TIMER_ID)) );
+            (!EF_BOOLEAN_Timer_IsTimedOut(UART_TIMER_ID)) );
 
-
-    if(( UARTCharsAvail(UART_PinConfiguration_Array[UART_Number][UART_BASE_ELEMENT]) == FALSE) && (EF_BOOLEAN_Timer_IsTimedOut(UART_TIMER_ID) == TRUE))
+    if( /* (UARTCharsAvail(UART_PinConfiguration_Array[UART_Number][UART_BASE_ELEMENT]) == FALSE) && */ (EF_BOOLEAN_Timer_IsTimedOut(UART_TIMER_ID) == TRUE))
     {
         reciveFlag = FALSE;
     }
@@ -173,7 +175,8 @@ BOOLEAN EF_BOOLEAN_UART_GetChar(U8_t UART_Number,U8_t * returnedValue)
     EF_void_TimerReset(UART_TIMER_ID);
 
     //returned -1 if there is no data
-    *returnedValue = UARTCharGetNonBlocking(UART_PinConfiguration_Array[UART_Number][UART_BASE_ELEMENT]);
+    u32ReceivedData = UARTCharGetNonBlocking(UART_PinConfiguration_Array[UART_Number][UART_BASE_ELEMENT]);
+    *returnedValue = (U8_t)u32ReceivedData;
 
     return reciveFlag;
 }
@@ -265,7 +268,7 @@ int16_t getAvailableDataCountOnUART()
 * Return Value: BOOLEAN : return True if Byte is recieved or false
 *
 ******************************************************************************/
-BOOLEAN EF_BOOLEAN_UART_GetArray(U8_t UART_Number, U8_t * ReturnedArray, U8_t ByteToStop)
+BOOLEAN EF_BOOLEAN_UART_GetArray(U8_t UART_Number, U8_t * ReturnedArray, U8_t ByteToStop, U8_t u8MaxNumberOfRxBytes)
 {
     U8_t index           = 0 ;
     U8_t b_Status        = 0 ;
@@ -286,11 +289,15 @@ BOOLEAN EF_BOOLEAN_UART_GetArray(U8_t UART_Number, U8_t * ReturnedArray, U8_t By
         {
             ReceivingTrials++;
         }
+    }while ( (*(ReturnedArray + index-1) != ByteToStop) && (ReceivingTrials <= MAX_RX_TRIALS_NUMBER) && (index < u8MaxNumberOfRxBytes) );
 
-    }while ( (*(ReturnedArray + index-1) != ByteToStop) && (ReceivingTrials <= MAX_RX_TRIALS_NUMBER) );
+    if (index >= u8MaxNumberOfRxBytes)
+    {
+        b_Status = FALSE;
+    }
+
 
     return b_Status;
-
 }
 /****************************************************************************
 * Function    : BOOLEAN_UART_putchar

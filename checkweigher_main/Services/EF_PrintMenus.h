@@ -33,17 +33,7 @@
 #define UART_TOUCH_SCREEN               UART3
 
 
-/*********************************************************************
- * Function    : EF_u8_GetCategoryWeight (U8_t u8CategoryNumber, U32_t* u32CategoryWeight)
- *
- * DESCRIPTION : write and redfine the Category Weight for the corresponding Category Number.
- *
- * PARAMETERS  : u8CategoryNumber  : category number from 1 to 21
- *               u32CategoryWeight : Category Weight by Grams.
- *
- * Return Value: False if Error in Category Number or in EEPROM
- ***********************************************************************/
-U8_t EF_u8_PrintMenu_GetCategoryWeight (U32_t u32CategoryNumber, U32_t* u32CategoryWeight);
+
 
 /*********************************************************************
  * Function    : EF_void_PrintMenus_CalWeightShow (U8_t u8CatNumber)
@@ -55,9 +45,9 @@ U8_t EF_u8_PrintMenu_GetCategoryWeight (U32_t u32CategoryNumber, U32_t* u32Categ
  *
  * Return Value: Void.
  ***********************************************************************/
-void EF_void_PrintMenus_CalWeightShow (U32_t CatNumber);
+void EF_void_PrintMenus_CalWeightShow (U32_t u32CatNumber,U32_t u32CatWeight , U32_t u32PositiveValue  , U32_t u32NegativeValue );
 
-void EF_void_PrintMenus_CalEditPosNeg (U32_t u32CatNumber);
+void EF_void_PrintMenus_CalEditPosNeg (U32_t u32CatNumber , U32_t u32CatWeight );
 
 
 

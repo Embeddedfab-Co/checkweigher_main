@@ -33,7 +33,6 @@ int main(void)
 
     EF_void_UserInterface_Init ();
 
-
     while (1)
     {
         EF_v_UI_SystemStates ();

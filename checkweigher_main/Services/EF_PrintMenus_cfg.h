@@ -29,8 +29,20 @@ enum ButtonAddresses
     BACK_FROM_EDIT_BUTTON      = 0x00A6,
     BACK_FROM_SHOW_BUTTON      = 0x00A7,
     BACK_FROM_ANALYSIS_BUTTON  = 0x00A1,
-    SHOW_LIST_HIGH_BUTTON      = 0xB324,
-    SHOW_LIST_LOW_BUTTON       = 0xB320,
+    SHOW_LIST_HIGH_BUTTON      = 0xA007,
+    SHOW_LIST_LOW_BUTTON       = 0xA008,
+    PRAMETER_MAX_TOL_BUTTON    = 0xA009,
+    PRAMETER_CAT_WEIGHT_BUTTON = 0xA00a,
+    PRAM_BARCODE_LIMIT_BUTTON  = 0xA00b,
+    PRAMETER_SCALE_LIMIT_BUTTON= 0xA00c,
+    SAVE_SCALE_LIMIT_BUTTON    = 0xA00e,
+    BACK_PARAMETERS_BUTTON     = 0xA100,
+    SAVE_BARCODE_LIMIT_BUTTON  = 0xA101,
+    SAVE_MAX_TOL_BUTTON        = 0xA103,
+    SAVE_CAT_WEIGHT_BUTTON     = 0xA104,
+    EDIT_LIST_LOW_BUTTON       = 0xA106,
+    EDIT_LIST_HIGH_BUTTON      = 0xA107,
+
 };
 
 
@@ -45,8 +57,8 @@ enum DataDisplayAddresses
 
     /* to Send these Values not receiving */
     CORRECT_PACKETS_NUM_V      = 0xB100,
-    UNDERLOAD_PACKETS_NUM_V    = 0xB104,
-    OVERLOAD_PACKETS_NUM_V     = 0xB108,
+    UNDERLOAD_PACKETS_NUM_V    = 0xB108,
+    OVERLOAD_PACKETS_NUM_V     = 0xB104,
 
     /* to send Zero and [Receive] this Value as Response */
     ENTER_SHOW_CAT_NUM_V       = 0xB11C,
@@ -72,7 +84,16 @@ enum DataDisplayAddresses
     ERROR_SCALE_MAX_WEIGHT_V   = 0xB30C,
     ERROR_BARCODE_MIN_WEIGHT_V = 0xB318,
     ERROR_BARCODE_MAX_WEIGHT_V = 0xB31C,
-    ERROR_MAX_TOLERANCE_V      = 0xB320
+    ERROR_MAX_TOLERANCE_V      = 0xB320,
+    ERROR_MAX_CAT_WEIGHT_V     = 0xb324,
+
+    /* Parameters */
+    PARAMETER_SCALE_MAX_V      = 0xb33c,
+    PARAMETER_BARCODE_MAX_V    = 0xb334,
+    PARAMETER_TOL_MAX_V        = 0xb32c,
+    PARAMETER_CAT_WEIGHT_V     = 0xb328,
+    PARAMETER_CAT_NUM_V        = 0xb330,
+
 };
 
 
@@ -100,6 +121,14 @@ enum PhotosAddresses {
     ERROR_BARCODE_WEIGHT_PHOTO = 38,
     ERROR_WATING_BARCODE_PHOTO = 35,
     ERROR_UNSAVED_DATA_PHOTO   = 39,
+    ERROR_CAT_WEIGHT_PHOTO     = 52,
+    /*------ Parameters ---------*/
+    PARAMETERS_CHOOSE_PHOTO    = 46,
+    PARAMETER_SCALE_PHOTO      = 44,
+    PARAMETER_BARCODE_PHOTO    = 45,
+    PARAMETER_TOLERANCE_PHOTO  = 47,
+    PARAMETER_CAT_WEIGHT_PHOTO = 51,
+
 };
 
 

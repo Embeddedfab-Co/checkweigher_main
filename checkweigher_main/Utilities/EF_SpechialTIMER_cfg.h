@@ -37,7 +37,7 @@
 #define ANALYSIS_PRINT_TIMER_ID     9       /* timer to toggle between Analysis Print Cat Numbers and Print Weights */
 
 
-#define UART_WAIT_TIME              100
+#define UART_WAIT_TIME              50
 #define SPI_TIMEOUT                 200
 #define GET_ALL_FRAME_TIMEOUT       200
 #define DISPLAY_ERROR_TIMEOUT       1000

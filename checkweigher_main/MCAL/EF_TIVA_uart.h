@@ -66,7 +66,7 @@ extern void EF_void_UART_Init(UART_cfg_str *uart_cfg);
 * Return Value: BOOLEAN : return True if Byte is transmitted or false
 *
 ******************************************************************************/
-BOOLEAN EF_BOOLEAN_UART_GetArray(U8_t UART_Number,U8_t * ReturnedArray, U8_t ByteToStop);
+BOOLEAN EF_BOOLEAN_UART_GetArray(U8_t UART_Number,U8_t * ReturnedArray, U8_t ByteToStop, U8_t u8MaxNumberOfRxBytes);
 
 
 

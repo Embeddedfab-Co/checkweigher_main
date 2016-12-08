@@ -28,7 +28,6 @@
 #include "EF_PrintMenus_cfg.h"
 
 #include "EF_UserInterface_cfg.h"
-#include "../MCAL/EF_TIVA_EEPROM.h"
 #include "../MCAL/EF_TIVA_uart.h"
 
 #include <string.h>
@@ -69,33 +68,6 @@ U8_t * CateogryWeight [22] =
 
 
 
-/*********************************************************************
- * Function    : EF_u8_GetCategoryWeight (U8_t u8CategoryNumber, U32_t* u32CategoryWeight)
- *
- * DESCRIPTION : write and redfine the Category Weight for the corresponding Category Number.
- *
- * PARAMETERS  : u8CategoryNumber  : category number from 1 to 21
- *               u32CategoryWeight : Category Weight by Grams.
- *
- * Return Value: False if Error in Category Number or in EEPROM
- ***********************************************************************/
-U8_t EF_u8_PrintMenu_GetCategoryWeight (U32_t u32CategoryNumber, U32_t* u32CategoryWeight)
-{
-    U8_t u8ReturnValue = TRUE;
-
-
-    if ( (u32CategoryNumber < MIN_TOL_CATEGORIES) || (u32CategoryNumber > MAX_TOL_CATEGORIES))
-    {
-        u8ReturnValue = FALSE;
-    }
-    else
-    {
-        u8ReturnValue = EF_BOOLEAN_EEPROM_ReadNBytes(  u32CategoryWeight, CATEGORY_WEIGHT_ARRAY_ADD + 4*(u32CategoryNumber-1) , 4);
-    }
-
-    return u8ReturnValue;
-}
-
 
 /*********************************************************************
  * Function    : EF_void_PrintMenus_CalWeightShow (U8_t u8CatNumber)
@@ -107,56 +79,19 @@ U8_t EF_u8_PrintMenu_GetCategoryWeight (U32_t u32CategoryNumber, U32_t* u32Categ
  *
  * Return Value: Void.
  ***********************************************************************/
-void EF_void_PrintMenus_CalWeightShow (U32_t u32CatNumber)
+void EF_void_PrintMenus_CalWeightShow (U32_t u32CatNumber,U32_t u32CatWeight , U32_t u32PositiveValue  , U32_t u32NegativeValue )
 {
-    U32_t u32CatWeight     = 0;
-    U32_t u32PositiveValue = 0;
-    U32_t u32NegativeValue = 0;
-
-
-#ifdef USING_VARIABLE_CAT_WEIGHT
-    EF_u8_PrintMenu_GetCategoryWeight (u32CatNumber , &u32CatWeight );
-#else
-    if (u8CatNumber > 1)
-    {
-        u32CatWeight = (u8CatNumber-1) *1000;
-    }
-    else
-    {
-        u32CatWeight = 800;
-    }
-#endif
-
-    EF_BOOLEAN_EEPROM_ReadNBytes((U32_t *)&u32PositiveValue, (2*u32CatNumber - 1)*4, 4);
-    EF_BOOLEAN_EEPROM_ReadNBytes((U32_t *)&u32NegativeValue, (2*u32CatNumber)*4, 4);
-
 
     EF_void_PrintMenus_SendValue     ( SHOW_CATEGORY_NUM_V       , u32CatNumber     , TRUE );
     EF_void_PrintMenus_SendValue     ( SHOW_CATEGORY_WEIGHT_V    , u32CatWeight     , TRUE );
     EF_void_PrintMenus_SendValue     ( SHOW_POSITIVE_TOLERANCE_V , u32PositiveValue , TRUE );
     EF_void_PrintMenus_SendValue     ( SHOW_NEGATIVE_TOLERANCE_V , u32NegativeValue , TRUE );
     EF_void_PrintMenus_DisplayPhoto  ( SHOW_TOLERANCE_PHOTO );
-
 }
 
 
-void EF_void_PrintMenus_CalEditPosNeg (U32_t u32CatNumber)
+void EF_void_PrintMenus_CalEditPosNeg (U32_t u32CatNumber , U32_t u32CatWeight )
 {
-    U32_t u32CatWeight     = 0;
-
-
-#ifdef USING_VARIABLE_CAT_WEIGHT
-    EF_u8_PrintMenu_GetCategoryWeight (u32CatNumber , &u32CatWeight );
-#else
-    if (u8CatNumber > 1)
-    {
-        u32CatWeight = (u8CatNumber-1) *1000;
-    }
-    else
-    {
-        u32CatWeight = 800;
-    }
-#endif
 
     EF_void_PrintMenus_SendValue     ( EDIT_CATEGORY_NUM_V       , u32CatNumber , TRUE );
     EF_void_PrintMenus_SendValue     ( EDIT_CATEGORY_WEIGHT_V    , u32CatWeight , TRUE );

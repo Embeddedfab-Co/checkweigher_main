@@ -59,7 +59,7 @@ BOOLEAN EF_BOOLEAN_BarCodeScanner_ReadData(U32_t * pU32BarCodeMeasuredWeight)
     }
 
     /* receive the Data until get (.) , as the barcode like as 321.0 */
-    u8ReturnStatus = EF_BOOLEAN_UART_GetArray( BARCODE_UART , ScannedReturnArray , '.' );
+    u8ReturnStatus = EF_BOOLEAN_UART_GetArray( BARCODE_UART , ScannedReturnArray , '.' , 10);
     if (u8ReturnStatus == TRUE)
     {
 #ifdef UART_TERMINAL_DEBUG
