@@ -704,7 +704,7 @@ void  EF_v_UI_SystemStates ()
     static U32_t u32BarCode_Max      = 0;
     static U32_t u32Tolerance_Max    = 0;
     static U32_t u32Scale_Max        = 0;
-    static U32_t u32CatWeight        = 0;
+           U32_t u32CatStatus        = 0;
 
     static U32_t u32ParsingData      = 0;                       /* get the parsing data of the received frame from it */
     static U16_t u16CurrentState     = 0;                       /* save the switch case */
@@ -957,7 +957,9 @@ void  EF_v_UI_SystemStates ()
 
     case PRAMETER_CAT_WEIGHT_BUTTON:
         EF_void_PrintMenus_SendValue     ( PARAMETER_CAT_WEIGHT_V , 0, TRUE );
+        EF_void_PrintMenus_SendValue     ( PARAMETER_CAT_NUM_V , 0, TRUE );
         EF_void_PrintMenus_DisplayPhoto  ( PARAMETER_CAT_WEIGHT_PHOTO );
+        u8CatWeightFlag = PREPARE_TO_EDIT;
         u16CurrentState = ESCAPE_STATE;
         break;
 
@@ -1010,7 +1012,7 @@ void  EF_v_UI_SystemStates ()
 
                       EF_void_TimerStart (ERROR_PHOTO_TIMER_ID);
                   }
-                  else if (u32CatWeight > MAX_CATEGORY_WEIGTH)
+                  else if (u32CategoryWeighT > MAX_CATEGORY_WEIGTH)
                   {
                       EF_void_PrintMenus_DisplayPhoto  ( ERROR_CAT_WEIGHT_PHOTO );
                       EF_void_PrintMenus_SendValue     ( ERROR_MAX_CAT_WEIGHT_V , MAX_CATEGORY_WEIGTH, TRUE );
@@ -1020,25 +1022,25 @@ void  EF_v_UI_SystemStates ()
                   else
                   {
                       /* save in Array to get tolerance fastly in Operation mode */
-                      CategoryStruct[gU32CategoryNumber].CategoryWeight = u32CatWeight;
+                      CategoryStruct[gU32CategoryNumber].CategoryWeight = u32CategoryWeighT;
                       CategoryStruct[gU32CategoryNumber].CategoryStatus = TRUE;
-
+                      u32CatStatus = TRUE;
                       /* save in EEPROM to Premenatly saving it */
-                      EF_BOOLEAN_EEPROM_WriteNBytes ( &u32CatWeight  ,  CATEGORIES_ADD_EEPROM + 4*4*(gU32CategoryNumber-1) , 4);
-                      EF_BOOLEAN_EEPROM_WriteNBytes ( &CategoryStruct[gU32CategoryNumber].CategoryStatus  ,  CATEGORIES_ADD_EEPROM + 4*4*(gU32CategoryNumber-1) + 3*4 , 4);
+                      EF_BOOLEAN_EEPROM_WriteNBytes ( &u32CategoryWeighT  ,  CATEGORIES_ADD_EEPROM + 4*4*(gU32CategoryNumber-1) , 4);
+                      EF_BOOLEAN_EEPROM_WriteNBytes ( &u32CatStatus , CATEGORIES_ADD_EEPROM + 4*4*(gU32CategoryNumber-1) + 3*4 , 4);
 
                       EF_void_PrintMenus_DisplayPhoto  ( DATA_IS_SAVED_PHOTO );
                       /* start timer to print save photo */
                       EF_void_TimerStart (SAVING_TOL_TIMER_ID);
 
-                      u16CurrentState     = SELECT_EDIT_BUTTON;
+                      u16CurrentState     = PRAMETER_CAT_WEIGHT_BUTTON;
                   }
               }
               else
               {
                   /* if Saved Button is pressed,  request the tolerance Values to check then saveing them if vaild*/
-                  EF_void_PrintMenus_RequestValue (EDIT_POSITIVE_TOLERANCE_V, TRUE);
-                  EF_void_PrintMenus_RequestValue (EDIT_NEGATIVE_TOLERANCE_V, TRUE);
+                  EF_void_PrintMenus_RequestValue ( PARAMETER_CAT_NUM_V, TRUE);
+                  EF_void_PrintMenus_RequestValue ( PARAMETER_CAT_WEIGHT_V, TRUE);
                   u16CurrentState     = ESCAPE_STATE;
               }
           }
@@ -1048,20 +1050,11 @@ void  EF_v_UI_SystemStates ()
               if ( EF_BOOLEAN_TimerCheck ( ERROR_PHOTO_TIMER_ID ) == TRUE )
               {
                   EF_void_Timer_TurnOff ( ERROR_PHOTO_TIMER_ID);
-                  u32CategoryWeighT  = CategoryStruct[gU32CategoryNumber].CategoryWeight;
-                  /* After Error Photo is finished, Print Edit tolerance Menu again */
-                  EF_void_PrintMenus_CalEditPosNeg (gU32CategoryNumber , u32CategoryWeighT);
-                  u32NegativeValue = 0;
-                  u32PositiveValue = 0;
 
                   /* Return to Pasre State, The Expected : Save (after_adding _Values_or_not) and Back */
-                  u16CurrentState     = ESCAPE_STATE;
+                  u16CurrentState     = PRAMETER_CAT_WEIGHT_BUTTON;
               }
           }
-
-        EF_void_PrintMenus_RequestValue ( PARAMETER_CAT_WEIGHT_V , TRUE);
-        EF_void_PrintMenus_RequestValue ( PARAMETER_CAT_NUM_V    , TRUE);
-        u16CurrentState = ESCAPE_STATE;
         break;
 
     /*------------------------------------------------------------------------------------------------------------*/
@@ -1334,6 +1327,50 @@ void  EF_v_UI_SystemStates ()
         }
         break;
 
+    case PARAMETER_CAT_NUM_V:
+        gU32CategoryNumber = u32ParsingData;
+
+        if ( u8CatWeightFlag == PREPARE_TO_EDIT )
+        {
+            u8CatWeightFlag = FIRST_EDITING;
+            u16CurrentState = ESCAPE_STATE;
+
+        }
+        else if ( u8CatWeightFlag == FIRST_EDITING )
+        {
+            u8CatWeightFlag = SECOND_EDITING;
+            u16CurrentState = SAVE_CAT_WEIGHT_BUTTON;
+        }
+        else
+        {
+            //for any unexpected errors
+            u8CatWeightFlag = PREPARE_TO_EDIT;
+            u16CurrentState = ESCAPE_STATE;
+        }
+        break;
+
+
+    case PARAMETER_CAT_WEIGHT_V:
+        u32CategoryWeighT = u32ParsingData;
+
+        if ( u8CatWeightFlag == PREPARE_TO_EDIT )
+        {
+            u8CatWeightFlag = FIRST_EDITING;
+            u16CurrentState = ESCAPE_STATE;
+
+        }
+        else if ( u8CatWeightFlag == FIRST_EDITING )
+        {
+            u8CatWeightFlag = SECOND_EDITING;
+            u16CurrentState = SAVE_CAT_WEIGHT_BUTTON;
+        }
+        else
+        {
+            //for any unexpected errors
+            u8CatWeightFlag = PREPARE_TO_EDIT;
+            u16CurrentState = ESCAPE_STATE;
+        }
+        break;
 
 
     default :
