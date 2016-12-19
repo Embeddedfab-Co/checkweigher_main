@@ -317,7 +317,7 @@ BOOLEAN  B_Scale_Get_Stable_Weight_raw (volatile U16_t * u16WeightInGrams, BOOLE
 ***********************************************************************/
 BOOLEAN  EF_BOOLEAN_Scale_Get_Stable_Weight (volatile U32_t * u32WeightInGrams, BOOLEAN * bScaleError)
 {
-     U8_t b_ReturnedStatus = 0;
+     U8_t b_ReturnedStatus  = 0;
      U8_t ReturnedArray[20] = {0};  /* to receive the Response in it */
 
 
@@ -346,7 +346,6 @@ BOOLEAN  EF_BOOLEAN_Scale_Get_Stable_Weight (volatile U32_t * u32WeightInGrams, 
               *u32WeightInGrams = float_ConvertToInt_Grams( (U8_t *) (ReturnedArray ));
           }
      }
-
      return b_ReturnedStatus;
 }
 

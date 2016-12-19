@@ -40,26 +40,24 @@
 /*************************************************************
  * Definitions
  **************************************************************/
-
         U8_t  gu8OperSwitchStatus          = 0;         /* for Switch status */
+        U8_t  gu8PatchAnalysisFlag          = 0;        /* used in Analysis Flag */
         U8_t  bScaleError                  = 0;         /* use with Scale Function Argument */
-        U32_t gU32NumOfCorrectPackages     = 0;         /* Save Correct Packge Number in it */
-        U32_t gU32NumOfUnderloadPackages   = 0;         /* Save UnderLoad Packge Number in it */
-        U32_t gU32NumOfOverloadPackages    = 0;         /* Save OverLoad Packge Number in it */
-
-        U32_t gU32CorrectPackagesWeight    = 0;         /* Save Correct Packge Number in it */
-        U32_t gU32UnderloadPackagesWeight  = 0;         /* Save UnderLoad Packge Number in it */
-        U32_t gU32OverloadPackagesWeight   = 0;         /* Save OverLoad Packge Number in it */
         U32_t gU32MaxCatogriesNumber       = 0;
+        U32_t u32FirstRelease_EEPROM = 0;       /* help to init. at First Version Only, So check the FirstRelease_EEPROM Flag to int. them or not  */
 
         U8_t  gU8BarCodeUartInit_FirstTime = 0;         /* used to make UARTinit in the First trial to get the BarCode */
         U8_t  gU8StopOperations_Flag       = FALSE;     /* Flag to check if 3Months passed--> Diable Operation if Enabled TRAILS_3_MONTHS */
 extern  U32_t gU32CounterExpired_3Months;
-static  U32_t gU32CategoryNumber           = 0;         /* Save wanted Category Number in it */
 static  UART_cfg_str  uart_init_cfg        = { UART_TOUCH_SCREEN , SCREEN_UART_BAUDRATE, NUMBER_OF_BITS_8, ONE_STOP_BIT,
                                                NO_PARITY         , TRUE                , FALSE           , TRUE        , TRUE};
 CategoryDetailsStr CategoryStruct[MAX_CATEGORY_NUMBER +1];  /* +1 as Categoreis start from 1 and finish at Number 21 */
-SystemParametersStr ParametersStr = {MAX_CATEGORY_WEIGTH , MAX_CATEGORY_WEIGTH , MAX_TOL_VALUE ,MAX_CATEGORY_WEIGTH };
+SystemParametersStrT ParametersStr = { MAX_CATEGORY_WEIGTH , MAX_CATEGORY_WEIGTH , MAX_TOL_VALUE , MAX_CATEGORY_WEIGTH , DEFAULT_PASSWORD };
+AnalysisStrT  AnalysisSystem = {0, 0, 0, 0, 0, 0};
+AnalysisStrT  AnalysisPatch  = {0, 0, 0, 0, 0, 0};
+TimeDetailsStr Time_StartAnalysis;
+TimeDetailsStr Time_TillNowAnalysis;
+
 /*************************************************************
  * Local Functions/Tasks/ System States
  **************************************************************/
@@ -74,6 +72,32 @@ static void void_InitConsole(void)
     UARTClockSourceSet(UART0_BASE, UART_CLOCK_PIOSC);
     GPIOPinTypeUART(GPIO_PORTA_BASE, GPIO_PIN_0 | GPIO_PIN_1);
     UARTStdioConfig(0, 9600, 16000000);
+}
+
+/*********************************************************************
+ * Function    : U32_t Convert
+ *
+ * DESCRIPTION : convert Date and Time to Minutes units
+ *
+ * PARAMETERS  : timeDetails : struct of type TimeDetailsStr has date and time
+ *
+ * Return Value: None.
+ ***********************************************************************/
+U32_t EF_v_ConvertRTC (TimeDetailsStr timeDetails )
+{
+    U32_t calculation = 0;
+
+
+    /* convert BCD hexa format to Decimal for Ex: convert (21)hexa to be (21)decimal */
+    timeDetails.Year    = timeDetails.Year   - (timeDetails.Year/16)*6;
+    timeDetails.Month   = timeDetails.Month  - (timeDetails.Month/16)*6;
+    timeDetails.Day     = timeDetails.Day    - (timeDetails.Day/16)*6;
+    timeDetails.Hour    = timeDetails.Hour   - (timeDetails.Hour/16)*6;
+    timeDetails.Minutes = timeDetails.Minutes- (timeDetails.Minutes/16)*6;
+
+    calculation = timeDetails.Year *24*12*30*60 + timeDetails.Month *24*30*60
+                        + timeDetails.Day*24*60 +timeDetails.Hour*60 + timeDetails.Minutes;
+ return calculation;
 }
 
 /*********************************************************************
@@ -181,11 +205,11 @@ void EF_v_UI_OperationTask()
     case GET_ALL_DATA_STATE :
         /* this state helps me to start the Get Value timer in the first Entery of any new operation */
         /* Print Operation Menu if Not Error Found, else after Error ,Print Operation Menu */
-        if ( (EF_u8_TimerIsEnabled ( ERROR_PHOTO_TIMER_ID ) == TRUE) )
+        if ( (EF_u8_TimerIsEnabled ( ERROR_OPERATION_TIMER_ID ) == TRUE) )
         {
-            if (EF_BOOLEAN_TimerCheck ( ERROR_PHOTO_TIMER_ID ) == TRUE)
+            if (EF_BOOLEAN_TimerCheck ( ERROR_OPERATION_TIMER_ID ) == TRUE)
             {
-                EF_void_Timer_TurnOff ( ERROR_PHOTO_TIMER_ID );
+                EF_void_Timer_TurnOff ( ERROR_OPERATION_TIMER_ID );
                 EF_void_PrintMenus_OperationWithZeroing ();
             }
         }
@@ -249,7 +273,7 @@ void EF_v_UI_OperationTask()
                 EF_void_PrintMenus_SendValue ( ERROR_BARCODE_MAX_WEIGHT_V , ParametersStr.Barcode_Max, TRUE );
                 EF_void_PrintMenus_SendValue ( ERROR_BARCODE_MIN_WEIGHT_V , MIN_WEIGTH, TRUE );
 
-                EF_void_TimerStart ( ERROR_PHOTO_TIMER_ID );
+                EF_void_TimerStart ( ERROR_OPERATION_TIMER_ID );
             }
             /* check for Weight limits. if Error found ,Print Weight Error and start Error Timer */
             else if ( (u32ScaleWeigth >  ParametersStr.Scale_Max) || (u32ScaleWeigth < MIN_WEIGTH))
@@ -257,11 +281,11 @@ void EF_v_UI_OperationTask()
                 EF_void_PrintMenus_DisplayPhoto ( ERROR_SCALE_WEIGHT_PHOTO );
                 EF_void_PrintMenus_SendValue ( ERROR_SCALE_MAX_WEIGHT_V , ParametersStr.Scale_Max, TRUE );
                 EF_void_PrintMenus_SendValue ( ERROR_SCALE_MIN_WEIGHT_V , MIN_WEIGTH, TRUE );
-                EF_void_TimerStart    ( ERROR_PHOTO_TIMER_ID );
+                EF_void_TimerStart    ( ERROR_OPERATION_TIMER_ID );
             }
             else
             {
-                EF_void_Timer_TurnOff (ERROR_PHOTO_TIMER_ID);
+                EF_void_Timer_TurnOff (ERROR_OPERATION_TIMER_ID);
                 gu8OperSwitchStatus     = CALCULAION_STATE;
             }
         }
@@ -274,11 +298,11 @@ void EF_v_UI_OperationTask()
                 EF_void_PrintMenus_SendValue ( ERROR_SCALE_MAX_WEIGHT_V , ParametersStr.Scale_Max, TRUE );
                 EF_void_PrintMenus_SendValue ( ERROR_SCALE_MIN_WEIGHT_V , MIN_WEIGTH, TRUE );
 
-                EF_void_TimerStart    ( ERROR_PHOTO_TIMER_ID );
+                EF_void_TimerStart    ( ERROR_OPERATION_TIMER_ID );
             }
             else
             {
-                EF_void_Timer_TurnOff (ERROR_PHOTO_TIMER_ID);
+                EF_void_Timer_TurnOff (ERROR_OPERATION_TIMER_ID);
                 EF_void_PrintMenus_OperationWithZeroing ();
                 EF_void_PrintMenus_SendValue ( OPERATION_SCALE_WEIGHT_V , u32ScaleWeigth, TRUE );
                 gu8OperSwitchStatus     = GET_BARCODE_STATE;
@@ -295,11 +319,11 @@ void EF_v_UI_OperationTask()
                 EF_void_PrintMenus_SendValue ( ERROR_BARCODE_MAX_WEIGHT_V , ParametersStr.Barcode_Max, TRUE );
                 EF_void_PrintMenus_SendValue ( ERROR_BARCODE_MIN_WEIGHT_V , MIN_WEIGTH, TRUE );
 
-                EF_void_TimerStart ( ERROR_PHOTO_TIMER_ID );
+                EF_void_TimerStart ( ERROR_OPERATION_TIMER_ID );
             }
             else
             {
-                EF_void_Timer_TurnOff ( ERROR_PHOTO_TIMER_ID );
+                EF_void_Timer_TurnOff ( ERROR_OPERATION_TIMER_ID );
                 EF_void_PrintMenus_OperationWithZeroing ();
                 EF_void_PrintMenus_SendValue ( OPERATION_BARCODE_WEIGHT_V , u32BARCODEWeigth, TRUE );
                 gu8OperSwitchStatus     = GET_SCALE_STATE;
@@ -321,15 +345,15 @@ void EF_v_UI_OperationTask()
         {
             u32TimerCompareValue      = GET_OPER_VALUES_TIMEOUT*4 ;
 
-            if ( (EF_u8_TimerIsEnabled ( ERROR_PHOTO_TIMER_ID ) == FALSE) )
+            if ( (EF_u8_TimerIsEnabled ( ERROR_OPERATION_TIMER_ID ) == FALSE) )
             {
                 EF_void_PrintMenus_DisplayPhoto ( ERROR_WATING_BARCODE_PHOTO);
             }
             else
             {
-                if (EF_BOOLEAN_TimerCheck ( ERROR_PHOTO_TIMER_ID ) == TRUE)
+                if (EF_BOOLEAN_TimerCheck ( ERROR_OPERATION_TIMER_ID ) == TRUE)
                 {
-                    EF_void_Timer_TurnOff ( ERROR_PHOTO_TIMER_ID );
+                    EF_void_Timer_TurnOff ( ERROR_OPERATION_TIMER_ID );
                 }
             }
         }
@@ -343,7 +367,7 @@ void EF_v_UI_OperationTask()
                 EF_void_PrintMenus_SendValue ( ERROR_BARCODE_MAX_WEIGHT_V , ParametersStr.Barcode_Max, TRUE );
                 EF_void_PrintMenus_SendValue ( ERROR_BARCODE_MIN_WEIGHT_V , MIN_WEIGTH, TRUE );
 
-                EF_void_TimerStart ( ERROR_PHOTO_TIMER_ID );
+                EF_void_TimerStart ( ERROR_OPERATION_TIMER_ID );
                 gu8OperSwitchStatus = MENU_WITHOUT_VALUES_STATE;
             }
             else
@@ -356,7 +380,7 @@ void EF_v_UI_OperationTask()
         if (  (EF_BOOLEAN_IOCard_ReadPhotoCell() != FOUND_PACKAGE)   )
         {
             EF_void_PrintMenus_DisplayPhoto ( ERROR_PROXIMITY_PHOTO );
-            EF_void_TimerStart    ( ERROR_PHOTO_TIMER_ID     );
+            EF_void_TimerStart    ( ERROR_OPERATION_TIMER_ID     );
             gu8OperSwitchStatus = MENU_WITHOUT_VALUES_STATE;
         }
 #else
@@ -376,7 +400,7 @@ void EF_v_UI_OperationTask()
         {
             u32TimerCompareValue      = GET_OPER_VALUES_TIMEOUT*4 ;
 
-            if ( (EF_u8_TimerIsEnabled ( ERROR_PHOTO_TIMER_ID ) == FALSE) )
+            if ( (EF_u8_TimerIsEnabled ( ERROR_OPERATION_TIMER_ID ) == FALSE) )
             {
 #ifdef USING_PROXIMITY
 
@@ -393,9 +417,9 @@ void EF_v_UI_OperationTask()
             }
             else
             {
-                if (EF_BOOLEAN_TimerCheck ( ERROR_PHOTO_TIMER_ID ) == TRUE)
+                if (EF_BOOLEAN_TimerCheck ( ERROR_OPERATION_TIMER_ID ) == TRUE)
                 {
-                    EF_void_Timer_TurnOff ( ERROR_PHOTO_TIMER_ID );
+                    EF_void_Timer_TurnOff ( ERROR_OPERATION_TIMER_ID );
                 }
             }
         }
@@ -426,15 +450,13 @@ void EF_v_UI_OperationTask()
                 EF_void_PrintMenus_SendValue ( ERROR_SCALE_MAX_WEIGHT_V , ParametersStr.Scale_Max, TRUE );
                 EF_void_PrintMenus_SendValue ( ERROR_SCALE_MIN_WEIGHT_V , MIN_WEIGTH, TRUE );
 
-                EF_void_TimerStart    ( ERROR_PHOTO_TIMER_ID     );
+                EF_void_TimerStart    ( ERROR_OPERATION_TIMER_ID     );
             }
             else
             {
                 gu8OperSwitchStatus = CALCULAION_STATE;
             }
         }
-
-
         break;
 
    /* this state is used to decide the result and print Operation Menu with Values */
@@ -463,15 +485,22 @@ void EF_v_UI_OperationTask()
          // compare with the Lowest tolerance , if ok -- print accept without any searching
          if ( abs(u32ScaleWeigth - u32BARCODEWeigth) <= MIN_TOL_VALUE)
          {
-             gU32NumOfCorrectPackages++;
-             gU32CorrectPackagesWeight = gU32CorrectPackagesWeight + u32ScaleWeigth;
+             AnalysisSystem.CorrectNum++;
+             AnalysisSystem.CorrectWeight = AnalysisSystem.CorrectWeight + u32ScaleWeigth;
              b_isAcceptPackage = ACCEPT_PACKET;
-             EF_BOOLEAN_EEPROM_WriteNBytes ( &gU32NumOfCorrectPackages    , CORRECT_PACKAGE_ADD_EEPROM , 4);
-             EF_BOOLEAN_EEPROM_WriteNBytes ( &gU32CorrectPackagesWeight   , CORRECT_WEIGHT_ADD_EEPROM , 4);
+             EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisSystem.CorrectNum    , CORRECT_PACKAGE_ADD_EEPROM , 4);
+             EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisSystem.CorrectWeight   , CORRECT_WEIGHT_ADD_EEPROM , 4);
+
+             if (gu8PatchAnalysisFlag == TRUE)
+             {
+                 AnalysisPatch.CorrectNum++;
+                 AnalysisPatch.CorrectWeight = AnalysisPatch.CorrectWeight + u32ScaleWeigth;
+                 EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisPatch.CorrectNum    , PATCH_CORRECT_NUM_EEPROM , 4);
+                 EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisPatch.CorrectWeight , PATCH_CORRECT_WEIGHT_EEPROM , 4);
+             }
          }
          else
          {
-
              for (u8Counter = 1 ; u8Counter <= gU32MaxCatogriesNumber ; u8Counter++)  //todo make max CATEGORIES numbers variable .. edited by user.
              {
                  CategoryWeight = CategoryStruct[u8Counter].CategoryWeight;
@@ -512,20 +541,34 @@ void EF_v_UI_OperationTask()
 
                  if ( u32Tol_NegativeValue >= s32Difference)
                  {
-                     /* Accept */
-                     gU32NumOfCorrectPackages++;
-                     gU32CorrectPackagesWeight = gU32CorrectPackagesWeight + u32ScaleWeigth;
+                     AnalysisSystem.CorrectNum++;
+                     AnalysisSystem.CorrectWeight = AnalysisSystem.CorrectWeight + u32ScaleWeigth;
                      b_isAcceptPackage = ACCEPT_PACKET;
-                     EF_BOOLEAN_EEPROM_WriteNBytes ( &gU32NumOfCorrectPackages    , CORRECT_PACKAGE_ADD_EEPROM , 4);
-                     EF_BOOLEAN_EEPROM_WriteNBytes ( &gU32CorrectPackagesWeight   , CORRECT_WEIGHT_ADD_EEPROM , 4);
+                     EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisSystem.CorrectNum    , CORRECT_PACKAGE_ADD_EEPROM , 4);
+                     EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisSystem.CorrectWeight   , CORRECT_WEIGHT_ADD_EEPROM , 4);
+
+                     if (gu8PatchAnalysisFlag == TRUE)
+                     {
+                         AnalysisPatch.CorrectNum++;
+                         AnalysisPatch.CorrectWeight = AnalysisPatch.CorrectWeight + u32ScaleWeigth;
+                         EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisPatch.CorrectNum    , PATCH_CORRECT_NUM_EEPROM , 4);
+                         EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisPatch.CorrectWeight , PATCH_CORRECT_WEIGHT_EEPROM , 4);
+                     }
                  }
                  else
                  {
-                     gU32NumOfUnderloadPackages++;
-                     gU32UnderloadPackagesWeight = gU32UnderloadPackagesWeight + u32ScaleWeigth;
+                     AnalysisSystem.UnderloadsNum++;
+                     AnalysisSystem.UnderloadsWeight = AnalysisSystem.UnderloadsWeight  + u32ScaleWeigth;
                      b_isAcceptPackage = UNDERLOAD_PACKET;
-                     EF_BOOLEAN_EEPROM_WriteNBytes ( &gU32NumOfUnderloadPackages, UNDERLOAD_PACKAGE_ADD_EEPROM, 4);
-                     EF_BOOLEAN_EEPROM_WriteNBytes ( &gU32UnderloadPackagesWeight, UNDERLOAD_WEIGHT_ADD_EEPROM, 4);
+                     EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisSystem.UnderloadsNum, UNDERLOAD_PACKAGE_ADD_EEPROM, 4);
+                     EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisSystem.UnderloadsWeight , UNDERLOAD_WEIGHT_ADD_EEPROM, 4);
+                     if (gu8PatchAnalysisFlag == TRUE)
+                     {
+                         AnalysisPatch.UnderloadsNum++;
+                         AnalysisPatch.UnderloadsWeight = AnalysisPatch.UnderloadsWeight  + u32ScaleWeigth;
+                         EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisPatch.UnderloadsNum, PATCH_UNDERLOAD_PACKAGE_EEPROM, 4);
+                         EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisPatch.UnderloadsWeight , PATCH_UNDERLOAD_WEIGHT_EEPROM, 4);
+                     }
                  }
              }
              else
@@ -536,24 +579,34 @@ void EF_v_UI_OperationTask()
 
                  if ( u32Tol_PositiveValue >= s32Difference)
                  {
-                     /* ACCEPT */
-                     gU32NumOfCorrectPackages++;
-                     gU32CorrectPackagesWeight = gU32CorrectPackagesWeight + u32ScaleWeigth;
-
+                     AnalysisSystem.CorrectNum++;
+                     AnalysisSystem.CorrectWeight = AnalysisSystem.CorrectWeight + u32ScaleWeigth;
                      b_isAcceptPackage = ACCEPT_PACKET;
-                     EF_BOOLEAN_EEPROM_WriteNBytes ( &gU32NumOfCorrectPackages    , CORRECT_PACKAGE_ADD_EEPROM , 4);
-                     EF_BOOLEAN_EEPROM_WriteNBytes ( &gU32CorrectPackagesWeight   , CORRECT_WEIGHT_ADD_EEPROM , 4);
+                     EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisSystem.CorrectNum    , CORRECT_PACKAGE_ADD_EEPROM , 4);
+                     EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisSystem.CorrectWeight   , CORRECT_WEIGHT_ADD_EEPROM , 4);
+                     if (gu8PatchAnalysisFlag == TRUE)
+                     {
+                         AnalysisPatch.CorrectNum++;
+                         AnalysisPatch.CorrectWeight = AnalysisPatch.CorrectWeight + u32ScaleWeigth;
+                         EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisPatch.CorrectNum    , PATCH_CORRECT_NUM_EEPROM , 4);
+                         EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisPatch.CorrectWeight , PATCH_CORRECT_WEIGHT_EEPROM , 4);
+                     }
                  }
                  else
                  {
                      /* OVERLOAD */
-                     gU32NumOfOverloadPackages++;
-                     gU32OverloadPackagesWeight = gU32OverloadPackagesWeight + u32ScaleWeigth;
-
+                     AnalysisSystem.OverLoadNum++;
+                     AnalysisSystem.OverLoadsWeight = AnalysisSystem.OverLoadsWeight + u32ScaleWeigth;
                      b_isAcceptPackage = OVERLOAD_PACKET;
-                     EF_BOOLEAN_EEPROM_WriteNBytes ( &gU32NumOfOverloadPackages  , OVERLOAD_PACKAGE_ADD_EEPROM, 4);
-                     EF_BOOLEAN_EEPROM_WriteNBytes ( &gU32OverloadPackagesWeight , OVERLOAD_WEIGHT_ADD_EEPROM, 4);
-
+                     EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisSystem.OverLoadNum  , OVERLOAD_PACKAGE_ADD_EEPROM, 4);
+                     EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisSystem.OverLoadsWeight , OVERLOAD_WEIGHT_ADD_EEPROM, 4);
+                     if (gu8PatchAnalysisFlag == TRUE)
+                     {
+                         AnalysisPatch.OverLoadNum++;
+                         AnalysisPatch.OverLoadsWeight = AnalysisPatch.OverLoadsWeight + u32ScaleWeigth;
+                         EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisPatch.OverLoadNum     , PATCH_OVERLOAD_PACKAGE_EEPROM, 4);
+                         EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisPatch.OverLoadsWeight , PATCH_OVERLOAD_WEIGHT_EEPROM, 4);
+                     }
                  }
              }
          }
@@ -565,7 +618,6 @@ void EF_v_UI_OperationTask()
 #ifndef USING_PROXIMITY
         EF_void_TimerStart    ( NEW_OPERATION_TIMER_ID );       /* to go to new operation after defined time */
 #endif
-
         gu8OperSwitchStatus = WAITING_NEW_OPERATION;            /* goto new state to enter New operation if Proximity show no thing */
         break;
 
@@ -606,8 +658,8 @@ void EF_v_UI_OperationTask()
  ***********************************************************************/
 void EF_void_UserInterface_Init ()
 {
-    U32_t u32FirstRelease_EEPROM = 0;       /* help to init. at First Version Only, So check the FirstRelease_EEPROM Flag to int. them or not  */
-
+    U32_t RtcData = 0;
+    U32_t RtcTime = 0;
 
     gU32MaxCatogriesNumber = MAX_CATEGORY_NUMBER; // todo make it configured by user and save in EEPROM and keep MAX_CATEGORY_NUMBER as a S.W limit for user
 
@@ -635,43 +687,59 @@ void EF_void_UserInterface_Init ()
         u32FirstRelease_EEPROM = FIRST_RELEASE_FLAG_VALUE;
         EF_BOOLEAN_EEPROM_WriteNBytes ( &u32FirstRelease_EEPROM  , FIRST_RELEASE_FLAG_EEPROM_ADD , 4);
 
+        u32FirstRelease_EEPROM = FIRST_RELEASE_FLAG_VALUE +1; /* need it in get rtc to be a flag for start time of system */
+
         /* Write EEPROM First Release only for Weigth Tolerance */
         EF_v_WriteCatDetailsInEEPROM();
 
         /* init the Package Numbers and weight for Analysis in their places in EEPROM with Value = 0 */
-        gU32NumOfCorrectPackages    = 0;
-        gU32NumOfOverloadPackages   = 0;
-        gU32NumOfUnderloadPackages  = 0;
+        EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisSystem.CorrectNum   , CORRECT_PACKAGE_ADD_EEPROM ,  4);
+        EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisSystem.OverLoadNum  , OVERLOAD_PACKAGE_ADD_EEPROM,  4);
+        EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisSystem.UnderloadsNum , UNDERLOAD_PACKAGE_ADD_EEPROM, 4);
 
-        gU32CorrectPackagesWeight   = 0;
-        gU32UnderloadPackagesWeight = 0;
-        gU32OverloadPackagesWeight  = 0;
+        EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisSystem.CorrectWeight  , CORRECT_WEIGHT_ADD_EEPROM ,  4);
+        EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisSystem.UnderloadsWeight, UNDERLOAD_WEIGHT_ADD_EEPROM ,  4);
+        EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisSystem.OverLoadsWeight , OVERLOAD_WEIGHT_ADD_EEPROM, 4);
 
-        EF_BOOLEAN_EEPROM_WriteNBytes ( &gU32NumOfCorrectPackages   , CORRECT_PACKAGE_ADD_EEPROM ,  4);
-        EF_BOOLEAN_EEPROM_WriteNBytes ( &gU32NumOfOverloadPackages  , OVERLOAD_PACKAGE_ADD_EEPROM,  4);
-        EF_BOOLEAN_EEPROM_WriteNBytes ( &gU32NumOfUnderloadPackages , UNDERLOAD_PACKAGE_ADD_EEPROM, 4);
 
-        EF_BOOLEAN_EEPROM_WriteNBytes ( &gU32CorrectPackagesWeight  , CORRECT_WEIGHT_ADD_EEPROM ,  4);
-        EF_BOOLEAN_EEPROM_WriteNBytes ( &gU32UnderloadPackagesWeight, UNDERLOAD_WEIGHT_ADD_EEPROM ,  4);
-        EF_BOOLEAN_EEPROM_WriteNBytes ( &gU32OverloadPackagesWeight , OVERLOAD_WEIGHT_ADD_EEPROM, 4);
+        EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisPatch.CorrectNum    , PATCH_CORRECT_NUM_EEPROM ,  4);
+        EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisPatch.OverLoadNum   , PATCH_UNDERLOAD_PACKAGE_EEPROM,  4);
+        EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisPatch.UnderloadsNum , PATCH_OVERLOAD_PACKAGE_EEPROM, 4);
+
+        EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisPatch.CorrectWeight   , PATCH_CORRECT_WEIGHT_EEPROM ,  4);
+        EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisPatch.UnderloadsWeight, PATCH_UNDERLOAD_WEIGHT_EEPROM , 4);
+        EF_BOOLEAN_EEPROM_WriteNBytes ( &AnalysisPatch.OverLoadsWeight , PATCH_OVERLOAD_WEIGHT_EEPROM, 4);
 
         /* Make gCounterExpired_3Months =0 to start timeout after 3Months to disable Operation if 3Months passed */
         gU32CounterExpired_3Months = 0;
         EF_BOOLEAN_EEPROM_WriteNBytes ( &gU32CounterExpired_3Months  , TIMER_EXPIRED_3Months_EEPROM_ADD , 4);
+
+        EF_BOOLEAN_EEPROM_WriteNBytes( &ParametersStr.Password  ,  DEFAULT_PASSWORD, 4);
+
+        EF_void_PrintMenus_GetRtc ();  /* get calender for the first time  to compare with it after that */
     }
     else
     {
-        EF_BOOLEAN_EEPROM_ReadNBytes ( &gU32NumOfCorrectPackages   , CORRECT_PACKAGE_ADD_EEPROM ,  4);
-        EF_BOOLEAN_EEPROM_ReadNBytes ( &gU32NumOfOverloadPackages  , OVERLOAD_PACKAGE_ADD_EEPROM,  4);
-        EF_BOOLEAN_EEPROM_ReadNBytes ( &gU32NumOfUnderloadPackages , UNDERLOAD_PACKAGE_ADD_EEPROM, 4);
+        EF_BOOLEAN_EEPROM_ReadNBytes ( &AnalysisSystem.CorrectNum   , CORRECT_PACKAGE_ADD_EEPROM ,  4);
+        EF_BOOLEAN_EEPROM_ReadNBytes ( &AnalysisSystem.OverLoadNum  , OVERLOAD_PACKAGE_ADD_EEPROM,  4);
+        EF_BOOLEAN_EEPROM_ReadNBytes ( &AnalysisSystem.UnderloadsNum , UNDERLOAD_PACKAGE_ADD_EEPROM, 4);
 
-        EF_BOOLEAN_EEPROM_ReadNBytes ( &gU32CorrectPackagesWeight  , CORRECT_WEIGHT_ADD_EEPROM ,  4);
-        EF_BOOLEAN_EEPROM_ReadNBytes ( &gU32UnderloadPackagesWeight, UNDERLOAD_WEIGHT_ADD_EEPROM,  4);
-        EF_BOOLEAN_EEPROM_ReadNBytes ( &gU32OverloadPackagesWeight , OVERLOAD_WEIGHT_ADD_EEPROM , 4);
+        EF_BOOLEAN_EEPROM_ReadNBytes ( &AnalysisSystem.CorrectWeight  , CORRECT_WEIGHT_ADD_EEPROM ,  4);
+        EF_BOOLEAN_EEPROM_ReadNBytes ( &AnalysisSystem.UnderloadsWeight, UNDERLOAD_WEIGHT_ADD_EEPROM ,  4);
+        EF_BOOLEAN_EEPROM_ReadNBytes ( &AnalysisSystem.OverLoadsWeight , OVERLOAD_WEIGHT_ADD_EEPROM, 4);
+
+        EF_BOOLEAN_EEPROM_ReadNBytes  ( &RtcData , START_DATE_ADD ,  4); /* 0, Year, Month, Day */
+        EF_BOOLEAN_EEPROM_ReadNBytes  ( &RtcTime , START_TIME_ADD ,  4);/* 0,    0, hour , Minutes */
+        Time_StartAnalysis.Year = (U8_t)(RtcData>>16) ;
+        Time_StartAnalysis.Month = (U8_t)(RtcData>>8) ;
+        Time_StartAnalysis.Day = (U8_t)(RtcData) ;
+        Time_StartAnalysis.Hour = (U8_t)(RtcTime>>8) ;
+        Time_StartAnalysis.Minutes = (U8_t)(RtcTime) ;
     }
 
     EF_v_GetCatDetalisFromEEPROM  ();
 
+    EF_BOOLEAN_EEPROM_ReadNBytes ( &ParametersStr.Password  ,  PASSWORD_EEPROM, 4);
 
 #ifdef USING_PROXIMITY
     EF_BOOLEAN_IOCard_Init();
@@ -685,6 +753,8 @@ void EF_void_UserInterface_Init ()
     EF_void_TimerCreate ( GET_OPER_VALUES_TIMER_ID , GET_OPER_VALUES_TIMEOUT );
     EF_void_TimerCreate ( NEW_OPERATION_TIMER_ID   , NEW_OPERATION_TIMEOUT   );
     EF_void_TimerCreate ( ANALYSIS_PRINT_TIMER_ID  , ANALYSIS_PRINT_TIMEOUT  );
+    EF_void_TimerCreate ( ERROR_OPERATION_TIMER_ID  , OPERATION_ERROR_TIMEOUT  );
+
 }
 
 /*********************************************************************
@@ -699,26 +769,32 @@ void EF_void_UserInterface_Init ()
 void  EF_v_UI_SystemStates ()
 {
     static U32_t u32CategoryWeighT   = 0;
+    static U32_t SystemTime          = 0;
     static U32_t u32NegativeValue    = 0;
     static U32_t u32PositiveValue    = 0;
     static U32_t u32BarCode_Max      = 0;
     static U32_t u32Tolerance_Max    = 0;
     static U32_t u32Scale_Max        = 0;
            U32_t u32CatStatus        = 0;
-
-    static U32_t u32ParsingData      = 0;                       /* get the parsing data of the received frame from it */
+    static U32_t u32PramCatNumber    = MIN_CATEGORY_NUMBER;
+    static U32_t u32TolerCatNumber   = 0;
+    static U32_t u32NewPassword      = 0;
+    static U32_t u32OldPassword      = 0;
+    static U8_t u32ParsingData[10]   = {0};                     /* get the parsing data of the received frame from it */
     static U16_t u16CurrentState     = 0;                       /* save the switch case */
     static U8_t  u8EditToleranceFlag = PREPARE_TO_EDIT;         /* define the state of Get data of Edit Tolerance Menu  */
     static U8_t  u8CatWeightFlag     = PREPARE_TO_EDIT;         /* define the state of Get data of Edit Tolerance Menu  */
-
+    static U8_t  u8ChangePassFlag    = PREPARE_TO_EDIT;         /* define the state of Get data of Edit Tolerance Menu  */
+    static U8_t  u8AnalysisFlag      = FALSE;
     static U8_t  u8ParsingDataLength = 0;
     static U8_t  u8AnaylsisPrint     = ANALYSIS_PRINT_NUMBERS;  /* to toggle between Analysis Cat. Numbers and Cat. weights  */
-
+           U32_t RtcData = 0;
+           U32_t RtcTime = 0 ;
 
     /* if the Rx Buffer has bytes > min_Frame , get the data and parse it ,to ensure the frame was completed */
     if ( getAvailableDataCountOnUART() >= SCREEN_MIN_FRAME_LENGTH)
     {
-        u16CurrentState = EF_u16_UI_ParseUartBuffer ( (U8_t *)&u32ParsingData, &u8ParsingDataLength);
+        u16CurrentState = EF_u16_UI_ParseUartBuffer ( (U8_t *)u32ParsingData, &u8ParsingDataLength);
     }
 
     switch (u16CurrentState)
@@ -738,7 +814,18 @@ void  EF_v_UI_SystemStates ()
         u16CurrentState      = ESCAPE_STATE;
         break;
 
-    case SELECT_ANALYSIS_BUTTON:
+   /*----------- Analysis ------------*/
+    case ANALYSIS_STATRT_BUTTON:
+        gu8PatchAnalysisFlag = TRUE;
+        u16CurrentState      = ANALYSIS_PATCH_BUTTON;
+        break;
+
+    case ANALYSIS_STOP_BUTTON:
+        gu8PatchAnalysisFlag = FALSE;
+        u16CurrentState      = ANALYSIS_PATCH_BUTTON;
+        break;
+
+    case ANALYSIS_PATCH_BUTTON :
         /* using timer to toggle  between Analysis Cat. Numbers and Cat. weights */
         if  ( EF_u8_TimerIsEnabled (ANALYSIS_PRINT_TIMER_ID) ==TRUE)
         {
@@ -753,70 +840,140 @@ void  EF_v_UI_SystemStates ()
             {
                 u8AnaylsisPrint = ANALYSIS_PRINT_WEIGHTS;
 
-                EF_void_PrintMenus_SendValue ( CORRECT_PACKETS_NUM_V   , gU32NumOfCorrectPackages   , TRUE);
-                EF_void_PrintMenus_SendValue ( OVERLOAD_PACKETS_NUM_V  , gU32NumOfOverloadPackages  , TRUE);
-                EF_void_PrintMenus_SendValue ( UNDERLOAD_PACKETS_NUM_V , gU32NumOfUnderloadPackages , TRUE);
+                EF_void_PrintMenus_SendValue ( CORRECT_PACKETS_NUM_V   , AnalysisPatch.CorrectNum   , TRUE);
+                EF_void_PrintMenus_SendValue ( OVERLOAD_PACKETS_NUM_V  , AnalysisPatch.OverLoadNum  , TRUE);
+                EF_void_PrintMenus_SendValue ( UNDERLOAD_PACKETS_NUM_V , AnalysisPatch.UnderloadsNum , TRUE);
             }
             else
             {
-                EF_void_PrintMenus_SendValue ( CORRECT_PACKETS_NUM_V   , gU32CorrectPackagesWeight   , TRUE);
-                EF_void_PrintMenus_SendValue ( UNDERLOAD_PACKETS_NUM_V , gU32UnderloadPackagesWeight , TRUE);
-                EF_void_PrintMenus_SendValue ( OVERLOAD_PACKETS_NUM_V  , gU32OverloadPackagesWeight  , TRUE);
+                EF_void_PrintMenus_SendValue ( CORRECT_PACKETS_NUM_V   , AnalysisPatch.CorrectWeight   , TRUE);
+                EF_void_PrintMenus_SendValue ( UNDERLOAD_PACKETS_NUM_V , AnalysisPatch.UnderloadsWeight , TRUE);
+                EF_void_PrintMenus_SendValue ( OVERLOAD_PACKETS_NUM_V  , AnalysisPatch.OverLoadsWeight  , TRUE);
 
                 u8AnaylsisPrint = ANALYSIS_PRINT_NUMBERS;
             }
-            EF_void_PrintMenus_DisplayPhoto ( ANALYSIS_PHOTO );
+            EF_void_PrintMenus_DisplayPhoto ( ANALYSIS_PATCH );
+            EF_void_TimerStart (ANALYSIS_PRINT_TIMER_ID);
+        }
+        break;
+
+
+    case ANALYSIS_SYSTEM_BUTTON :
+        /* using timer to toggle  between Analysis Cat. Numbers and Cat. weights */
+        if  ( EF_u8_TimerIsEnabled (ANALYSIS_PRINT_TIMER_ID) ==TRUE)
+        {
+            if (EF_BOOLEAN_Timer_IsTimedOut(ANALYSIS_PRINT_TIMER_ID)  == TRUE)
+            {
+                EF_void_Timer_TurnOff (ANALYSIS_PRINT_TIMER_ID);
+            }
+        }
+        else
+        {
+            if (u8AnaylsisPrint == ANALYSIS_PRINT_NUMBERS)
+            {
+                u8AnaylsisPrint = ANALYSIS_PRINT_WEIGHTS;
+
+                EF_void_PrintMenus_SendValue ( CORRECT_PACKETS_NUM_V   , AnalysisSystem.CorrectNum   , TRUE);
+                EF_void_PrintMenus_SendValue ( OVERLOAD_PACKETS_NUM_V  , AnalysisSystem.OverLoadNum  , TRUE);
+                EF_void_PrintMenus_SendValue ( UNDERLOAD_PACKETS_NUM_V , AnalysisSystem.UnderloadsNum , TRUE);
+
+                /* print hours and minutes */
+                EF_void_PrintMenus_SendValue ( ANALYSIS_HOURS_V   , SystemTime/60 , TRUE);
+                EF_void_PrintMenus_SendValue ( ANALYSIS_MINUTES_V , SystemTime - (SystemTime/60)*60 , TRUE);
+            }
+            else
+            {
+                EF_void_PrintMenus_SendValue ( CORRECT_PACKETS_NUM_V   , AnalysisSystem.CorrectWeight   , TRUE);
+                EF_void_PrintMenus_SendValue ( UNDERLOAD_PACKETS_NUM_V , AnalysisSystem.UnderloadsWeight , TRUE);
+                EF_void_PrintMenus_SendValue ( OVERLOAD_PACKETS_NUM_V  , AnalysisSystem.OverLoadsWeight  , TRUE);
+
+                u8AnaylsisPrint = ANALYSIS_PRINT_NUMBERS;
+            }
+            EF_void_PrintMenus_DisplayPhoto ( ANALYSIS_SYSTEM );
 
             EF_void_TimerStart (ANALYSIS_PRINT_TIMER_ID);
         }
         break;
 
 
+    case SELECT_ANALYSIS_BUTTON:
+        u8AnalysisFlag = TRUE;
+        EF_void_PrintMenus_GetRtc ();
+        u16CurrentState = ESCAPE_STATE;
+        break;
+
+    case GET_RTC_VALUES :
+        /* return Array[] = {year, month , day ,00 ,hour, minutes, Seconds}*/
+        if (u32FirstRelease_EEPROM != FIRST_RELEASE_FLAG_VALUE)
+        {
+            u32FirstRelease_EEPROM = FIRST_RELEASE_FLAG_VALUE;
+            Time_StartAnalysis.Year    = u32ParsingData[YEAR_ELEMENT];
+            Time_StartAnalysis.Month   = u32ParsingData[MONTH_ELEMENT];
+            Time_StartAnalysis.Day     = u32ParsingData[DAY_ELEMENT];
+            Time_StartAnalysis.Hour    = u32ParsingData[HOUR_ELEMENT];
+            Time_StartAnalysis.Minutes = u32ParsingData[MINUTE_ELEMENT];
+
+            RtcData = (Time_StartAnalysis.Year << 16) + (Time_StartAnalysis.Month << 8) + (Time_StartAnalysis.Day);
+            RtcTime = (Time_StartAnalysis.Hour << 8)  + (Time_StartAnalysis.Minutes);
+
+            EF_BOOLEAN_EEPROM_WriteNBytes  ( &RtcData , START_DATE_ADD ,  4); /* 0, Year, Month, Day */
+            EF_BOOLEAN_EEPROM_WriteNBytes  ( &RtcTime , START_TIME_ADD ,  4);/* 0,    0, hour , Minutes */
+            u16CurrentState = ESCAPE_STATE;
+        }
+        else
+        {
+            Time_TillNowAnalysis.Year  = u32ParsingData[YEAR_ELEMENT];
+            Time_TillNowAnalysis.Month = u32ParsingData[MONTH_ELEMENT];
+            Time_TillNowAnalysis.Day   = u32ParsingData[DAY_ELEMENT];
+            Time_TillNowAnalysis.Hour  = u32ParsingData[HOUR_ELEMENT];
+            Time_TillNowAnalysis.Minutes = u32ParsingData[MINUTE_ELEMENT];
+
+            SystemTime = EF_v_ConvertRTC(Time_TillNowAnalysis ) - EF_v_ConvertRTC(Time_StartAnalysis);
+            EF_void_PrintMenus_DisplayPhoto  ( ENTER_PASSWORD_PHOTO );
+            u16CurrentState = ESCAPE_STATE;
+        }
+        break;
+
     case CLEAR_ANALYSIS_BUTTON:
-        gU32NumOfCorrectPackages   = 0;
-        gU32NumOfOverloadPackages  = 0;
-        gU32NumOfUnderloadPackages = 0;
+        AnalysisPatch.CorrectNum       = 0;
+        AnalysisPatch.CorrectWeight    = 0;
+        AnalysisPatch.OverLoadNum      = 0;
+        AnalysisPatch.OverLoadsWeight  = 0;
+        AnalysisPatch.UnderloadsNum    = 0;
+        AnalysisPatch.UnderloadsWeight = 0;
 
-        gU32CorrectPackagesWeight   = 0;
-        gU32UnderloadPackagesWeight = 0;
-        gU32OverloadPackagesWeight  = 0;
-
-        EF_void_PrintMenus_SendValue    ( CORRECT_PACKETS_NUM_V   , gU32NumOfCorrectPackages   , TRUE);
-        EF_void_PrintMenus_SendValue    ( OVERLOAD_PACKETS_NUM_V  , gU32NumOfOverloadPackages  , TRUE);
-        EF_void_PrintMenus_SendValue    ( UNDERLOAD_PACKETS_NUM_V , gU32NumOfUnderloadPackages , TRUE);
-
+        EF_void_PrintMenus_SendValue    ( CORRECT_PACKETS_NUM_V   , 0   , TRUE);
+        EF_void_PrintMenus_SendValue    ( OVERLOAD_PACKETS_NUM_V  , 0  , TRUE);
+        EF_void_PrintMenus_SendValue    ( UNDERLOAD_PACKETS_NUM_V , 0 , TRUE);
 
         /* rewrite the Package Numbers in their places in EEPROM with Value = 0 to clear */
-        EF_BOOLEAN_EEPROM_WriteNBytes   ( &gU32NumOfCorrectPackages  , CORRECT_PACKAGE_ADD_EEPROM , 4);
-        EF_BOOLEAN_EEPROM_WriteNBytes   ( &gU32NumOfOverloadPackages , OVERLOAD_PACKAGE_ADD_EEPROM  , 4);
-        EF_BOOLEAN_EEPROM_WriteNBytes   ( &gU32NumOfUnderloadPackages, UNDERLOAD_PACKAGE_ADD_EEPROM , 4);
+        EF_BOOLEAN_EEPROM_WriteNBytes   ( &AnalysisPatch.CorrectNum  , CORRECT_PACKAGE_ADD_EEPROM , 4);
+        EF_BOOLEAN_EEPROM_WriteNBytes   ( &AnalysisPatch.OverLoadNum , OVERLOAD_PACKAGE_ADD_EEPROM  , 4);
+        EF_BOOLEAN_EEPROM_WriteNBytes   ( &AnalysisPatch.UnderloadsNum, UNDERLOAD_PACKAGE_ADD_EEPROM , 4);
 
-        EF_BOOLEAN_EEPROM_WriteNBytes   ( &gU32CorrectPackagesWeight  , CORRECT_WEIGHT_ADD_EEPROM   ,  4);
-        EF_BOOLEAN_EEPROM_WriteNBytes   ( &gU32UnderloadPackagesWeight, UNDERLOAD_WEIGHT_ADD_EEPROM ,  4);
-        EF_BOOLEAN_EEPROM_WriteNBytes   ( &gU32OverloadPackagesWeight , OVERLOAD_WEIGHT_ADD_EEPROM  , 4);
+        EF_BOOLEAN_EEPROM_WriteNBytes   ( &AnalysisPatch.CorrectWeight  , CORRECT_WEIGHT_ADD_EEPROM   ,  4);
+        EF_BOOLEAN_EEPROM_WriteNBytes   ( &AnalysisPatch.UnderloadsWeight, UNDERLOAD_WEIGHT_ADD_EEPROM ,  4);
+        EF_BOOLEAN_EEPROM_WriteNBytes   ( &AnalysisPatch.OverLoadsWeight , OVERLOAD_WEIGHT_ADD_EEPROM  , 4);
 
         EF_void_Timer_TurnOff (ANALYSIS_PRINT_TIMER_ID);
-        u16CurrentState = SELECT_ANALYSIS_BUTTON;
+        u16CurrentState = ANALYSIS_PATCH_BUTTON;
         u8AnaylsisPrint = ANALYSIS_PRINT_NUMBERS;
-
         break;
 
     case BACK_FROM_ANALYSIS_BUTTON :
         EF_void_Timer_TurnOff (ANALYSIS_PRINT_TIMER_ID);
         u8AnaylsisPrint = ANALYSIS_PRINT_NUMBERS;
-        EF_void_PrintMenus_DisplayPhoto  ( MAIN_SELECTION_PHOTO );
-
+        EF_void_PrintMenus_DisplayPhoto  ( ANALYSIS_CHOOSE );
         u16CurrentState = ESCAPE_STATE;
-
         break;
 
+        /*----------- Tolerance ------------*/
     case SELECT_EDIT_BUTTON:
         /* if time is out , Stop Timer, timer is used for ensuring printitng the save Photo for it's time */
         if (EF_u8_TimerIsEnabled (SAVING_TOL_TIMER_ID) == FALSE )
         {
             EF_void_PrintMenus_DisplayPhoto  ( ENTER_EDIT_CAT_NUM_PHOTO );
             EF_void_PrintMenus_SendValue     ( ENTER_EDIT_CAT_NUM_V   , 0 , TRUE);
-
             u16CurrentState = ESCAPE_STATE;
         }
         else if ( EF_BOOLEAN_TimerCheck (SAVING_TOL_TIMER_ID) ==TRUE)
@@ -833,24 +990,41 @@ void  EF_v_UI_SystemStates ()
         break;
 
     case SHOW_LIST_HIGH_BUTTON:
-        gU32CategoryNumber ++;
-        u32ParsingData  = gU32CategoryNumber;
+        if (u32TolerCatNumber < MAX_CATEGORY_NUMBER)
+        {
+            u32TolerCatNumber ++;
+        }
+        * (U32_t*)u32ParsingData  = u32TolerCatNumber;
         u16CurrentState = ENTER_SHOW_CAT_NUM_V;
-
         break;
 
     case SHOW_LIST_LOW_BUTTON:
-        gU32CategoryNumber --;
-        u32ParsingData  = gU32CategoryNumber;
+        if (u32TolerCatNumber > MIN_CATEGORY_NUMBER)
+        {
+            u32TolerCatNumber --;
+        }
+        * (U32_t*)u32ParsingData   = u32TolerCatNumber;
         u16CurrentState = ENTER_SHOW_CAT_NUM_V;
+        break;
+
+    case EDIT_LIST_HIGH_BUTTON:
+        u32TolerCatNumber ++;
+        * (U32_t*)u32ParsingData   = u32TolerCatNumber;
+        u16CurrentState = ENTER_EDIT_CAT_NUM_V;
+        break;
+
+    case EDIT_LIST_LOW_BUTTON:
+        u32TolerCatNumber --;
+        * (U32_t*)u32ParsingData   = u32TolerCatNumber;
+        u16CurrentState = ENTER_EDIT_CAT_NUM_V;
         break;
 
     case CONFIRM_EDIT_BUTTON:
         /* if pressed confirm Edit button , get the Entered category Number */
-        EF_void_PrintMenus_RequestValue (ENTER_EDIT_CAT_NUM_V, TRUE);
+        EF_void_PrintMenus_RequestValue ( ENTER_EDIT_CAT_NUM_V, TRUE);
+        u32TolerCatNumber  = 0;
         u8EditToleranceFlag = PREPARE_TO_EDIT;
-
-        u16CurrentState = ESCAPE_STATE;
+        u16CurrentState     = ESCAPE_STATE;
         break;
 
     case CONFIRM_SHOW_BUTTON:
@@ -870,7 +1044,6 @@ void  EF_v_UI_SystemStates ()
                {
                    u8EditToleranceFlag = PREPARE_TO_EDIT;
 
-                   //todo : random max tol if there is condition
                    if ( (u32PositiveValue > ParametersStr.Tolerance_Max) || (u32NegativeValue > ParametersStr.Tolerance_Max) )
                    {
                        EF_void_PrintMenus_DisplayPhoto  ( ERROR_MAX_TOLERANCE_PHOTO );
@@ -881,18 +1054,19 @@ void  EF_v_UI_SystemStates ()
                    else
                    {
                        /* save in Array to get tolerance fastly in Operation mode */
-                       CategoryStruct[gU32CategoryNumber].CategoryTol_Neg = u32NegativeValue;
-                       CategoryStruct[gU32CategoryNumber].CategoryTol_Pos = u32PositiveValue;
+                       CategoryStruct[u32TolerCatNumber].CategoryTol_Neg = u32NegativeValue;
+                       CategoryStruct[u32TolerCatNumber].CategoryTol_Pos = u32PositiveValue;
 
                        /* save in EEPROM to Premenatly saving it */
-                       EF_BOOLEAN_EEPROM_WriteNBytes ( &u32PositiveValue  ,  CATEGORIES_ADD_EEPROM + 4*4*(gU32CategoryNumber-1) + 1*4 , 4);
-                       EF_BOOLEAN_EEPROM_WriteNBytes ( &u32NegativeValue  ,  CATEGORIES_ADD_EEPROM + 4*4*(gU32CategoryNumber-1) + 2*4 , 4);
+                       EF_BOOLEAN_EEPROM_WriteNBytes ( &u32PositiveValue  ,  CATEGORIES_ADD_EEPROM + 4*4*(u32TolerCatNumber-1) + 1*4 , 4);
+                       EF_BOOLEAN_EEPROM_WriteNBytes ( &u32NegativeValue  ,  CATEGORIES_ADD_EEPROM + 4*4*(u32TolerCatNumber-1) + 2*4 , 4);
 
                        EF_void_PrintMenus_DisplayPhoto  ( DATA_IS_SAVED_PHOTO );
                        /* start timer to print save photo */
                        EF_void_TimerStart (SAVING_TOL_TIMER_ID);
 
-                       u16CurrentState     = SELECT_EDIT_BUTTON;
+                       * (U32_t*)u32ParsingData   = u32TolerCatNumber;
+                       u16CurrentState = ENTER_EDIT_CAT_NUM_V;
                    }
                }
                else
@@ -909,9 +1083,9 @@ void  EF_v_UI_SystemStates ()
                if ( EF_BOOLEAN_TimerCheck ( ERROR_PHOTO_TIMER_ID ) == TRUE )
                {
                    EF_void_Timer_TurnOff ( ERROR_PHOTO_TIMER_ID);
-                   u32CategoryWeighT  = CategoryStruct[gU32CategoryNumber].CategoryWeight;
+                   u32CategoryWeighT  = CategoryStruct[u32TolerCatNumber].CategoryWeight;
                    /* After Error Photo is finished, Print Edit tolerance Menu again */
-                   EF_void_PrintMenus_CalEditPosNeg (gU32CategoryNumber , u32CategoryWeighT);
+                   EF_void_PrintMenus_CalEditPosNeg (u32TolerCatNumber , u32CategoryWeighT);
                    u32NegativeValue = 0;
                    u32PositiveValue = 0;
 
@@ -936,6 +1110,300 @@ void  EF_v_UI_SystemStates ()
         u16CurrentState     = SELECT_SHOW_BUTTON;
         break;
 
+    case ENTER_SHOW_CAT_NUM_V:
+        /* check Category Number  - if error : print Error for 1 sec  then Goto SELECT_SHOW_BUTTON again
+          *                       - if ok    : Print Show Menu, Return to Main Parsing State
+          * */
+         if (EF_u8_TimerIsEnabled (ERROR_PHOTO_TIMER_ID) == FALSE)
+         {
+             if ( (* (U32_t*)u32ParsingData  > gU32MaxCatogriesNumber) || (* (U32_t*)u32ParsingData  < MIN_CATEGORY_NUMBER))
+             {
+                 EF_void_PrintMenus_DisplayPhoto  ( ERROR_ENTER_CAT_NUM_PHOTO );
+                 EF_void_PrintMenus_SendValue     ( ERROR_CAT_MAX_NUMBER_V, gU32MaxCatogriesNumber, TRUE );
+                 EF_void_PrintMenus_SendValue     ( ERROR_CAT_MIN_NUMBER_V, MIN_CATEGORY_NUMBER, TRUE );
+
+                 EF_void_TimerStart (ERROR_PHOTO_TIMER_ID);
+             }
+             else
+             {
+                 /* the Parsing Data from frame has Category Number */
+                 u32TolerCatNumber = * (U32_t*)u32ParsingData ;
+                 u32CategoryWeighT  = CategoryStruct[u32TolerCatNumber].CategoryWeight;
+                 u32NegativeValue   = CategoryStruct[u32TolerCatNumber].CategoryTol_Neg;
+                 u32PositiveValue   = CategoryStruct[u32TolerCatNumber].CategoryTol_Pos;
+
+                 /* print Show Menu */
+                 EF_void_PrintMenus_CalWeightShow (u32TolerCatNumber ,u32CategoryWeighT, u32PositiveValue , u32NegativeValue );
+                 /* Return to Pasre Stat */
+                 u16CurrentState     = ESCAPE_STATE;
+             }
+         }
+         else
+         {
+             /* if time is out , Stop Timer */
+             if ( EF_BOOLEAN_TimerCheck ( ERROR_PHOTO_TIMER_ID ) == TRUE )
+             {
+                 EF_void_Timer_TurnOff  ( ERROR_PHOTO_TIMER_ID);
+                 u16CurrentState  = SELECT_SHOW_BUTTON;
+             }
+         }
+        break;
+
+
+
+    case ENTER_EDIT_CAT_NUM_V:
+        /* check Category Number  - if error : print Error for 1 sec, zeroing flag then Goto Enter Category Number_ Edit again
+         *                        - if ok    : Print Edit+- Menu, Send Zeros, Set Flag  and Return to Main Parsing State
+         * */
+        if (EF_u8_TimerIsEnabled (SAVING_TOL_TIMER_ID) == TRUE)
+        {
+            if (EF_BOOLEAN_TimerCheck (SAVING_TOL_TIMER_ID) == TRUE)
+            {
+                EF_void_Timer_TurnOff  ( SAVING_TOL_TIMER_ID);
+            }
+        }
+        else
+        {
+            if (EF_u8_TimerIsEnabled (ERROR_PHOTO_TIMER_ID) == FALSE)
+            {
+                if ( ( * (U32_t*)u32ParsingData  > gU32MaxCatogriesNumber ) || ( * (U32_t*)u32ParsingData  < MIN_CATEGORY_NUMBER ))
+                {
+                    EF_void_PrintMenus_SendValue     ( ERROR_CAT_MAX_NUMBER_V, gU32MaxCatogriesNumber, TRUE );
+                    EF_void_PrintMenus_DisplayPhoto  ( ERROR_ENTER_CAT_NUM_PHOTO );
+                    EF_void_PrintMenus_SendValue     ( ERROR_CAT_MIN_NUMBER_V, MIN_CATEGORY_NUMBER, TRUE );
+
+                    EF_void_TimerStart (ERROR_PHOTO_TIMER_ID);
+                }
+                else
+                {
+                    /* the Parsing Data from frame has Category Number */
+                    u32TolerCatNumber = * (U32_t*)u32ParsingData ;
+                    u32CategoryWeighT  = CategoryStruct[u32TolerCatNumber].CategoryWeight;
+                    /* Print Edit +,- Menu */
+                    EF_void_PrintMenus_CalEditPosNeg (u32TolerCatNumber , u32CategoryWeighT);
+                    /* initialize Pos. and Neg. Tolerance */
+                    u32NegativeValue = 0;
+                    u32PositiveValue = 0;
+
+                    /* Return to Pasre State, The Expected : Save(after_adding _Values_or_not) or Back */
+                    u16CurrentState     = ESCAPE_STATE;
+                }
+            }
+            else
+            {
+                /* if time is out , Stop Timer */
+                if ( EF_BOOLEAN_TimerCheck ( ERROR_PHOTO_TIMER_ID ) == TRUE )
+                {
+                    EF_void_Timer_TurnOff  ( ERROR_PHOTO_TIMER_ID);
+                    u16CurrentState  = SELECT_EDIT_BUTTON;
+                }
+            }
+        }
+        break;
+
+
+    case EDIT_POSITIVE_TOLERANCE_V:
+        /* the Parsing Data from frame has the  EDIT_POSITIVE_TOLERANCE_VAlue*/
+        u32PositiveValue = * (U32_t*)u32ParsingData ;
+
+        if ( u8EditToleranceFlag == PREPARE_TO_EDIT )
+        {
+            u8EditToleranceFlag = FIRST_EDITING;
+            u16CurrentState     = ESCAPE_STATE;
+
+        }
+        else if ( u8EditToleranceFlag == FIRST_EDITING )
+        {
+            u8EditToleranceFlag = SECOND_EDITING;
+            u16CurrentState     = SAVE_TOLERANACE_BUTTON;
+        }
+        else
+        {
+            //for any unexpected errors
+            u8EditToleranceFlag = PREPARE_TO_EDIT;
+            u16CurrentState     = ESCAPE_STATE;
+        }
+        break;
+
+
+    case EDIT_NEGATIVE_TOLERANCE_V:
+        /* the Parsing Data from frame has the  EDIT_NEG_TOLERANCE_Value*/
+        u32NegativeValue = * (U32_t*)u32ParsingData ;
+
+        if ( u8EditToleranceFlag == PREPARE_TO_EDIT )
+        {
+            u8EditToleranceFlag = FIRST_EDITING;
+            u16CurrentState     = ESCAPE_STATE;
+        }
+        else if ( u8EditToleranceFlag == FIRST_EDITING )
+        {
+            u8EditToleranceFlag = SECOND_EDITING;
+            u16CurrentState     = SAVE_TOLERANACE_BUTTON;
+        }
+        else
+        {
+            //for any unexpected errors
+            u8EditToleranceFlag = PREPARE_TO_EDIT;
+            u16CurrentState     = ESCAPE_STATE;
+        }
+        break;
+
+
+   /*----------- Password ------------*/
+    case CONFIRM_PASSWORD_BUTTON:
+        EF_void_PrintMenus_RequestValue(ENTER_PASSWORD_V, TRUE);
+        u16CurrentState = ESCAPE_STATE;
+        break;
+
+    case CALIBRATION_CHOOSE_BUTTON:
+        u8AnalysisFlag = FALSE;
+        EF_void_PrintMenus_DisplayPhoto ( ENTER_PASSWORD_PHOTO );
+        u16CurrentState = ESCAPE_STATE;
+        break;
+
+    case ENTER_PASSWORD_V:
+        if (EF_u8_TimerIsEnabled (ERROR_PHOTO_TIMER_ID) == FALSE)
+        {
+            if ( * (U32_t*)u32ParsingData  != ParametersStr.Password )
+            {
+                EF_void_PrintMenus_DisplayPhoto ( WRONG_PASSWORD_PHOTO );
+                EF_void_TimerStart (ERROR_PHOTO_TIMER_ID);
+            }
+            else
+            {
+                if (u8AnalysisFlag == FALSE)
+                {
+                    EF_void_PrintMenus_DisplayPhoto ( CALIBRATION_CHOOSE_PHOTO );
+                }
+                else
+                {
+                    u8AnalysisFlag = FALSE;
+                    EF_void_PrintMenus_DisplayPhoto ( ANALYSIS_CHOOSE );
+                }
+                u16CurrentState = ESCAPE_STATE;
+            }
+        }
+        else
+        {
+            /* if time is out , Stop Timer */
+            if ( EF_BOOLEAN_TimerCheck ( ERROR_PHOTO_TIMER_ID ) == TRUE )
+            {
+                EF_void_Timer_TurnOff  ( ERROR_PHOTO_TIMER_ID);
+                EF_void_PrintMenus_DisplayPhoto ( ENTER_PASSWORD_PHOTO );
+                u16CurrentState = ESCAPE_STATE;
+            }
+        }
+        break;
+
+    case CHANGE_PASSWORD_BUTTON:
+        if (EF_u8_TimerIsEnabled (ERROR_PHOTO_TIMER_ID) == FALSE)
+        {
+            EF_void_PrintMenus_DisplayPhoto ( CHANGE_PASSWORD_PHOTO );
+            u16CurrentState = ESCAPE_STATE;
+        }
+        else
+        {
+            if ( EF_BOOLEAN_TimerCheck ( ERROR_PHOTO_TIMER_ID ) == TRUE )
+            {
+                EF_void_Timer_TurnOff  ( ERROR_PHOTO_TIMER_ID);
+            }
+        }
+        break;
+
+    case SAVE_PASSWORD_BUTTON:
+        if (EF_u8_TimerIsEnabled (SAVING_TOL_TIMER_ID) == FALSE)
+          {
+              if (u8ChangePassFlag == SECOND_EDITING)
+              {
+                  u8ChangePassFlag = PREPARE_TO_EDIT;
+
+                  if ( u32OldPassword != ParametersStr.Password )
+                  {
+                      EF_void_PrintMenus_DisplayPhoto ( WRONG_PASSWORD_PHOTO );
+                      EF_void_TimerStart (ERROR_PHOTO_TIMER_ID);
+                      u16CurrentState     = CHANGE_PASSWORD_BUTTON;
+
+                  }
+                  else
+                  {
+                      ParametersStr.Password = u32NewPassword;
+                      /* save in EEPROM to Premenatly saving it */
+                      EF_BOOLEAN_EEPROM_WriteNBytes ( &u32NewPassword  ,  PASSWORD_EEPROM, 4);
+
+                      EF_void_PrintMenus_DisplayPhoto  ( DATA_IS_SAVED_PHOTO );
+                      /* start timer to print save photo */
+                      EF_void_TimerStart (SAVING_TOL_TIMER_ID);
+                  }
+              }
+              else
+              {
+                  EF_void_PrintMenus_RequestValue(OLD_PASSWORD_V, TRUE);
+                  EF_void_PrintMenus_RequestValue(NEW_PASSWORD_V, TRUE);
+                  u16CurrentState = ESCAPE_STATE;
+              }
+          }
+          else
+          {
+              /* if time is out , Stop Timer */
+              if ( EF_BOOLEAN_TimerCheck ( SAVING_TOL_TIMER_ID ) == TRUE )
+              {
+                  EF_void_Timer_TurnOff ( SAVING_TOL_TIMER_ID);
+                  if (u8AnalysisFlag == FALSE)
+                  {
+                      EF_void_PrintMenus_DisplayPhoto ( CALIBRATION_CHOOSE_PHOTO );
+                  }
+                  else
+                  {
+                      u8AnalysisFlag = FALSE;
+                      EF_void_PrintMenus_DisplayPhoto ( ANALYSIS_CHOOSE );
+                  }
+                  /* Return to Pasre State, The Expected : Save (after_adding _Values_or_not) and Back */
+                  u16CurrentState     = ESCAPE_STATE;
+              }
+          }
+        break;
+
+    case OLD_PASSWORD_V:
+        u32OldPassword  = * (U32_t*)u32ParsingData ;
+
+        if ( u8ChangePassFlag == PREPARE_TO_EDIT )
+        {
+            u8ChangePassFlag = FIRST_EDITING;
+            u16CurrentState  = ESCAPE_STATE;
+        }
+        else if ( u8ChangePassFlag == FIRST_EDITING )
+        {
+            u8ChangePassFlag = SECOND_EDITING;
+            u16CurrentState  = SAVE_PASSWORD_BUTTON;
+        }
+        else
+        {
+            u8ChangePassFlag = PREPARE_TO_EDIT;
+            u16CurrentState  = ESCAPE_STATE;
+        }
+        break;
+
+    case NEW_PASSWORD_V:
+        u32NewPassword = * (U32_t*)u32ParsingData ;
+
+        if ( u8ChangePassFlag == PREPARE_TO_EDIT )
+        {
+            u8ChangePassFlag = FIRST_EDITING;
+            u16CurrentState  = ESCAPE_STATE;
+        }
+        else if ( u8ChangePassFlag == FIRST_EDITING )
+        {
+            u8ChangePassFlag = SECOND_EDITING;
+            u16CurrentState  = SAVE_PASSWORD_BUTTON;
+        }
+        else
+        {
+            u8ChangePassFlag = PREPARE_TO_EDIT;
+            u16CurrentState  = ESCAPE_STATE;
+        }
+        break;
+
+
    /*----------- Parameters ------------*/
     case PRAMETER_MAX_TOL_BUTTON:
         EF_void_PrintMenus_SendValue     ( PARAMETER_TOL_MAX_V , 0, TRUE );
@@ -956,27 +1424,41 @@ void  EF_v_UI_SystemStates ()
         break;
 
     case PRAMETER_CAT_WEIGHT_BUTTON:
-        EF_void_PrintMenus_SendValue     ( PARAMETER_CAT_WEIGHT_V , 0, TRUE );
-        EF_void_PrintMenus_SendValue     ( PARAMETER_CAT_NUM_V , 0, TRUE );
-        EF_void_PrintMenus_DisplayPhoto  ( PARAMETER_CAT_WEIGHT_PHOTO );
-        u8CatWeightFlag = PREPARE_TO_EDIT;
-        u16CurrentState = ESCAPE_STATE;
-        break;
-
-    case BACK_PARAMETERS_BUTTON:
-        if (EF_u8_TimerIsEnabled (SAVING_TOL_TIMER_ID) == FALSE)
+        if (EF_u8_TimerIsEnabled (ERROR_PHOTO_TIMER_ID ) == TRUE)
         {
-            EF_void_PrintMenus_DisplayPhoto  ( ERROR_UNSAVED_DATA_PHOTO );
-            EF_void_TimerStart (SAVING_TOL_TIMER_ID);
+            if ( EF_BOOLEAN_TimerCheck ( ERROR_PHOTO_TIMER_ID ) == TRUE )
+            {
+                EF_void_Timer_TurnOff ( ERROR_PHOTO_TIMER_ID );
+            }
         }
-        else if ( EF_BOOLEAN_TimerCheck ( SAVING_TOL_TIMER_ID ) == TRUE )
+        else
         {
-            EF_void_Timer_TurnOff (SAVING_TOL_TIMER_ID);
-            EF_void_PrintMenus_DisplayPhoto  ( PARAMETERS_CHOOSE_PHOTO );
-            u16CurrentState = ESCAPE_STATE;
+            if (EF_u8_TimerIsEnabled (SAVING_TOL_TIMER_ID ) == FALSE)
+            {
+                if ( (u32PramCatNumber > MAX_CATEGORY_NUMBER) || ( u32PramCatNumber < MIN_CATEGORY_NUMBER ) )
+                {
+                    EF_void_PrintMenus_DisplayPhoto ( ERROR_ENTER_CAT_NUM_PHOTO );
+                    EF_void_PrintMenus_SendValue    ( ERROR_CAT_MAX_NUMBER_V , MAX_CATEGORY_NUMBER, TRUE );
+                    EF_void_PrintMenus_SendValue    ( ERROR_CAT_MIN_NUMBER_V , MIN_CATEGORY_NUMBER, TRUE );
+
+                    EF_void_TimerStart (ERROR_PHOTO_TIMER_ID);
+                    u32PramCatNumber = MIN_CATEGORY_NUMBER;
+                }
+                else
+                {
+                    EF_void_PrintMenus_SendValue     ( PARAMETER_CAT_WEIGHT_V , 0, TRUE );
+                    EF_void_PrintMenus_SendValue     ( PARAMETER_CAT_NUM_V    , u32PramCatNumber, TRUE );
+                    EF_void_PrintMenus_DisplayPhoto  ( PARAMETER_CAT_WEIGHT_PHOTO );
+                    u8CatWeightFlag = PREPARE_TO_EDIT;
+                    u16CurrentState = ESCAPE_STATE;
+                }
+            }
+            else if ( EF_BOOLEAN_TimerCheck ( SAVING_TOL_TIMER_ID ) == TRUE )
+            {
+                EF_void_Timer_TurnOff ( SAVING_TOL_TIMER_ID );
+            }
         }
         break;
-
 
     case SAVE_BARCODE_LIMIT_BUTTON:
         /* if Saved Button is pressed,  request the  Value to check then saveing them if vaild*/
@@ -996,6 +1478,18 @@ void  EF_v_UI_SystemStates ()
         u16CurrentState = ESCAPE_STATE;
         break;
 
+    case PRAM_CAT_HIGH_BUTTON:
+        u32PramCatNumber ++;
+        * (U32_t*)u32ParsingData   = u32PramCatNumber;
+        u16CurrentState = PRAMETER_CAT_WEIGHT_BUTTON;
+        break;
+
+    case PRAM_CAT_LOW_BUTTON:
+        u32PramCatNumber --;
+        * (U32_t*)u32ParsingData   = u32PramCatNumber;
+        u16CurrentState = PRAMETER_CAT_WEIGHT_BUTTON;
+        break;
+
 
     case SAVE_CAT_WEIGHT_BUTTON:
         if (EF_u8_TimerIsEnabled (ERROR_PHOTO_TIMER_ID) == FALSE)
@@ -1004,30 +1498,22 @@ void  EF_v_UI_SystemStates ()
               {
                   u8CatWeightFlag = PREPARE_TO_EDIT;
 
-                  if ((gU32CategoryNumber > MAX_CATEGORY_NUMBER) || ( gU32CategoryNumber < MIN_CATEGORY_NUMBER ))
+                  if (u32CategoryWeighT > MAX_CATEGORY_WEIGTH)
                   {
-                      EF_void_PrintMenus_DisplayPhoto  ( ERROR_ENTER_CAT_NUM_PHOTO );
-                      EF_void_PrintMenus_SendValue     ( ERROR_CAT_MAX_NUMBER_V , MAX_CATEGORY_NUMBER, TRUE );
-                      EF_void_PrintMenus_SendValue     ( ERROR_CAT_MIN_NUMBER_V , MIN_CATEGORY_NUMBER, TRUE );
-
-                      EF_void_TimerStart (ERROR_PHOTO_TIMER_ID);
-                  }
-                  else if (u32CategoryWeighT > MAX_CATEGORY_WEIGTH)
-                  {
-                      EF_void_PrintMenus_DisplayPhoto  ( ERROR_CAT_WEIGHT_PHOTO );
-                      EF_void_PrintMenus_SendValue     ( ERROR_MAX_CAT_WEIGHT_V , MAX_CATEGORY_WEIGTH, TRUE );
+                      EF_void_PrintMenus_DisplayPhoto ( ERROR_CAT_WEIGHT_PHOTO );
+                      EF_void_PrintMenus_SendValue    ( ERROR_MAX_CAT_WEIGHT_V , MAX_CATEGORY_WEIGTH, TRUE );
 
                       EF_void_TimerStart (ERROR_PHOTO_TIMER_ID);
                   }
                   else
                   {
                       /* save in Array to get tolerance fastly in Operation mode */
-                      CategoryStruct[gU32CategoryNumber].CategoryWeight = u32CategoryWeighT;
-                      CategoryStruct[gU32CategoryNumber].CategoryStatus = TRUE;
+                      CategoryStruct[u32PramCatNumber].CategoryWeight = u32CategoryWeighT;
+                      CategoryStruct[u32PramCatNumber].CategoryStatus = TRUE;
                       u32CatStatus = TRUE;
                       /* save in EEPROM to Premenatly saving it */
-                      EF_BOOLEAN_EEPROM_WriteNBytes ( &u32CategoryWeighT  ,  CATEGORIES_ADD_EEPROM + 4*4*(gU32CategoryNumber-1) , 4);
-                      EF_BOOLEAN_EEPROM_WriteNBytes ( &u32CatStatus , CATEGORIES_ADD_EEPROM + 4*4*(gU32CategoryNumber-1) + 3*4 , 4);
+                      EF_BOOLEAN_EEPROM_WriteNBytes ( &u32CategoryWeighT  ,  CATEGORIES_ADD_EEPROM + 4*4*(u32PramCatNumber-1) , 4);
+                      EF_BOOLEAN_EEPROM_WriteNBytes ( &u32CatStatus , CATEGORIES_ADD_EEPROM + 4*4*(u32PramCatNumber-1) + 3*4 , 4);
 
                       EF_void_PrintMenus_DisplayPhoto  ( DATA_IS_SAVED_PHOTO );
                       /* start timer to print save photo */
@@ -1060,134 +1546,6 @@ void  EF_v_UI_SystemStates ()
     /*------------------------------------------------------------------------------------------------------------*/
     /*-------- these four switch cases will be received as a response for System request to get defined Data -----*/
     /*------------------------------------------------------------------------------------------------------------*/
-    case ENTER_SHOW_CAT_NUM_V:
-        /* check Category Number  - if error : print Error for 1 sec  then Goto SELECT_SHOW_BUTTON again
-          *                       - if ok    : Print Show Menu, Return to Main Parsing State
-          * */
-         if (EF_u8_TimerIsEnabled (ERROR_PHOTO_TIMER_ID) == FALSE)
-         {
-             if ( (u32ParsingData > gU32MaxCatogriesNumber) || (u32ParsingData < MIN_CATEGORY_NUMBER))
-             {
-                 EF_void_PrintMenus_DisplayPhoto  ( ERROR_ENTER_CAT_NUM_PHOTO );
-                 EF_void_PrintMenus_SendValue     ( ERROR_CAT_MAX_NUMBER_V, gU32MaxCatogriesNumber, TRUE );
-                 EF_void_PrintMenus_SendValue     ( ERROR_CAT_MIN_NUMBER_V, MIN_CATEGORY_NUMBER, TRUE );
-
-                 EF_void_TimerStart (ERROR_PHOTO_TIMER_ID);
-             }
-             else
-             {
-                 /* the Parsing Data from frame has Category Number */
-                 gU32CategoryNumber = u32ParsingData;
-                 u32CategoryWeighT  = CategoryStruct[gU32CategoryNumber].CategoryWeight;
-                 u32NegativeValue   = CategoryStruct[gU32CategoryNumber].CategoryTol_Neg;
-                 u32PositiveValue   = CategoryStruct[gU32CategoryNumber].CategoryTol_Pos;
-
-                 /* print Show Menu */
-                 EF_void_PrintMenus_CalWeightShow (gU32CategoryNumber ,u32CategoryWeighT, u32PositiveValue , u32NegativeValue );
-                 /* Return to Pasre Stat */
-                 u16CurrentState     = ESCAPE_STATE;
-             }
-         }
-         else
-         {
-             /* if time is out , Stop Timer */
-             if ( EF_BOOLEAN_TimerCheck ( ERROR_PHOTO_TIMER_ID ) == TRUE )
-             {
-                 EF_void_Timer_TurnOff  ( ERROR_PHOTO_TIMER_ID);
-                 u16CurrentState  = SELECT_SHOW_BUTTON;
-             }
-         }
-        break;
-
-
-
-    case ENTER_EDIT_CAT_NUM_V:
-        /* check Category Number  - if error : print Error for 1 sec, zeroing flag then Goto Enter Category Number_ Edit again
-         *                        - if ok    : Print Edit+- Menu, Send Zeros, Set Flag  and Return to Main Parsing State
-         * */
-        if (EF_u8_TimerIsEnabled (ERROR_PHOTO_TIMER_ID) == FALSE)
-        {
-            if ( ( u32ParsingData > gU32MaxCatogriesNumber ) || ( u32ParsingData < MIN_CATEGORY_NUMBER ))
-            {
-                EF_void_PrintMenus_DisplayPhoto  ( ERROR_ENTER_CAT_NUM_PHOTO );
-                EF_void_PrintMenus_SendValue     ( ERROR_CAT_MAX_NUMBER_V, gU32MaxCatogriesNumber, TRUE );
-                EF_void_PrintMenus_SendValue     ( ERROR_CAT_MIN_NUMBER_V, MIN_CATEGORY_NUMBER, TRUE );
-
-                EF_void_TimerStart (ERROR_PHOTO_TIMER_ID);
-            }
-            else
-            {
-                /* the Parsing Data from frame has Category Number */
-                gU32CategoryNumber = u32ParsingData;
-                u32CategoryWeighT  = CategoryStruct[gU32CategoryNumber].CategoryWeight;
-                /* Print Edit +,- Menu */
-                EF_void_PrintMenus_CalEditPosNeg (gU32CategoryNumber , u32CategoryWeighT);
-                /* initialize Pos. and Neg. Tolerance */
-                u32NegativeValue = 0;
-                u32PositiveValue = 0;
-
-                /* Return to Pasre State, The Expected : Save(after_adding _Values_or_not) or Back */
-                u16CurrentState     = ESCAPE_STATE;
-            }
-        }
-        else
-        {
-            /* if time is out , Stop Timer */
-            if ( EF_BOOLEAN_TimerCheck ( ERROR_PHOTO_TIMER_ID ) == TRUE )
-            {
-                EF_void_Timer_TurnOff  ( ERROR_PHOTO_TIMER_ID);
-                u16CurrentState  = SELECT_EDIT_BUTTON;
-            }
-        }
-
-        break;
-
-
-    case EDIT_POSITIVE_TOLERANCE_V:
-        /* the Parsing Data from frame has the  EDIT_POSITIVE_TOLERANCE_VAlue*/
-        u32PositiveValue = u32ParsingData;
-
-        if ( u8EditToleranceFlag == PREPARE_TO_EDIT )
-        {
-            u8EditToleranceFlag = FIRST_EDITING;
-            u16CurrentState     = ESCAPE_STATE;
-
-        }
-        else if ( u8EditToleranceFlag == FIRST_EDITING )
-        {
-            u8EditToleranceFlag = SECOND_EDITING;
-            u16CurrentState     = SAVE_TOLERANACE_BUTTON;
-        }
-        else
-        {
-            //for any unexpected errors
-            u8EditToleranceFlag = PREPARE_TO_EDIT;
-            u16CurrentState     = ESCAPE_STATE;
-        }
-        break;
-
-
-    case EDIT_NEGATIVE_TOLERANCE_V:
-        /* the Parsing Data from frame has the  EDIT_NEG_TOLERANCE_Value*/
-        u32NegativeValue = u32ParsingData;
-
-        if ( u8EditToleranceFlag == PREPARE_TO_EDIT )
-        {
-            u8EditToleranceFlag = FIRST_EDITING;
-            u16CurrentState     = ESCAPE_STATE;
-        }
-        else if ( u8EditToleranceFlag == FIRST_EDITING )
-        {
-            u8EditToleranceFlag = SECOND_EDITING;
-            u16CurrentState     = SAVE_TOLERANACE_BUTTON;
-        }
-        else
-        {
-            //for any unexpected errors
-            u8EditToleranceFlag = PREPARE_TO_EDIT;
-            u16CurrentState     = ESCAPE_STATE;
-        }
-        break;
 
 
     /*___ Barcode Saving ____*/
@@ -1208,7 +1566,7 @@ void  EF_v_UI_SystemStates ()
         {
             if (EF_u8_TimerIsEnabled (ERROR_PHOTO_TIMER_ID) == FALSE)
             {
-                u32BarCode_Max = u32ParsingData;
+                u32BarCode_Max = * (U32_t*)u32ParsingData ;
                 if ( (u32BarCode_Max > MAX_CATEGORY_WEIGTH) || (u32BarCode_Max < MIN_WEIGTH))
                 {
                     EF_void_PrintMenus_SendValue    ( ERROR_BARCODE_MAX_WEIGHT_V , MAX_CATEGORY_WEIGTH, TRUE );
@@ -1253,7 +1611,7 @@ void  EF_v_UI_SystemStates ()
         {
             if (EF_u8_TimerIsEnabled (ERROR_PHOTO_TIMER_ID) == FALSE)
             {
-                u32Scale_Max = u32ParsingData;
+                u32Scale_Max = * (U32_t*)u32ParsingData ;
                 if (u32Scale_Max > MAX_CATEGORY_WEIGTH)
                 {
                     EF_void_PrintMenus_SendValue    ( ERROR_SCALE_MAX_WEIGHT_V , MAX_CATEGORY_WEIGTH, TRUE );
@@ -1298,7 +1656,7 @@ void  EF_v_UI_SystemStates ()
         {
             if (EF_u8_TimerIsEnabled (ERROR_PHOTO_TIMER_ID) == FALSE)
             {
-                u32Tolerance_Max = u32ParsingData;
+                u32Tolerance_Max = * (U32_t*)u32ParsingData ;
                 if (u32Tolerance_Max > MAX_TOL_VALUE)
                 {
                     EF_void_PrintMenus_SendValue    ( ERROR_MAX_TOLERANCE_V , MAX_TOL_VALUE, TRUE );
@@ -1328,7 +1686,7 @@ void  EF_v_UI_SystemStates ()
         break;
 
     case PARAMETER_CAT_NUM_V:
-        gU32CategoryNumber = u32ParsingData;
+        u32PramCatNumber = * (U32_t*)u32ParsingData ;
 
         if ( u8CatWeightFlag == PREPARE_TO_EDIT )
         {
@@ -1351,7 +1709,7 @@ void  EF_v_UI_SystemStates ()
 
 
     case PARAMETER_CAT_WEIGHT_V:
-        u32CategoryWeighT = u32ParsingData;
+        u32CategoryWeighT = * (U32_t*)u32ParsingData ;
 
         if ( u8CatWeightFlag == PREPARE_TO_EDIT )
         {
@@ -1412,6 +1770,7 @@ U16_t EF_u16_UI_ParseUartBuffer (U8_t * DataPtr, U8_t * DataLength )
 
     /* - if Button is received the frame will be : [5A   A5   06   83   ADD_high   ADD_Low   01  Value_High   Value_Low]
      * - if Value request , the response will be : [5A   A5   08   83   ADD_high   ADD_Low   02  Byte_4       Byte_3      Byte_2   Byte_1]
+     * - if rTC   request , the response will be : [5A   A5   0A   81   20         07        year    month   day     00  hour    minutes    Seconds]
      * , 02 : two word , Byte_4 Byte_3 Byte_2 Byte_1 : (value 4 byte)
      * - check button : check on 06  with 83 then get Address to define the state
      * - check Value  : check on 08  with 83 then get Address to define the state and get the Value
@@ -1424,7 +1783,7 @@ U16_t EF_u16_UI_ParseUartBuffer (U8_t * DataPtr, U8_t * DataLength )
            u8FrameLength = (U8_t)readFromUART();
 
            /* if the Received is Value , there is 2 byte may be not received so looping to get the remaiing bytes */
-           if  (u8FrameLength == GET_VALUE_FRAME_LENGTH)
+           if  (u8FrameLength >= getAvailableDataCountOnUART() )
            {
                EF_void_TimerStart (GET_ALL_FRAME_TIMER_ID);
                while ( ( EF_BOOLEAN_TimerCheck ( GET_ALL_FRAME_TIMER_ID ) == FALSE ) &&  (getAvailableDataCountOnUART() < u8FrameLength) );
@@ -1439,15 +1798,24 @@ U16_t EF_u16_UI_ParseUartBuffer (U8_t * DataPtr, U8_t * DataLength )
                u8Command     = (U8_t)readFromUART();
                u8AddressHigh = (U8_t)readFromUART();
                u16Address    = (u8AddressHigh << 8) | ((U8_t)readFromUART());
-               u8NumOfWords  = (U8_t)readFromUART();
-
-               for (u8Iterator = 0; u8Iterator < u8FrameLength-4; u8Iterator++)
+               if (u8FrameLength == GET_RTC_LENGTH )
                {
-                   /* u8FrameLength-3 : 3 as Data was [Add_2Bytes + 1byte to defien Num of words + Value]  */
-                   /* the first receiving byte is the higher so make it the last place in the return integer */
-                   DataPtr [u8FrameLength - 4 -1 -u8Iterator] = (U8_t)readFromUART();
+                   for (u8Iterator = 0; u8Iterator < u8FrameLength-3; u8Iterator++)
+                   {
+                       DataPtr [u8Iterator] = (U8_t)readFromUART(); /* return Array[] = {year, month , day ,00 ,hour, minutes, Seconds}*/
+                   }
                }
+               else
+               {
+                   u8NumOfWords  = (U8_t)readFromUART();
 
+                   for (u8Iterator = 0; u8Iterator < u8FrameLength-4; u8Iterator++)
+                   {
+                       /* u8FrameLength-3 : 3 as Data was [Add_2Bytes + 1byte to defien Num of words + Value]  */
+                       /* the first receiving byte is the higher so make it the last place in the return integer */
+                       DataPtr [u8FrameLength - 4 -1 -u8Iterator] = (U8_t)readFromUART();
+                   }
+               }
                 if ( u8Command == READ_DATA_COMMAND )
                 {
                     if (u8FrameLength == RX_BUTTON_FRAME_LENGTH)
@@ -1465,6 +1833,11 @@ U16_t EF_u16_UI_ParseUartBuffer (U8_t * DataPtr, U8_t * DataLength )
                     {
                         //don't do anything as our system will receive length 6 or 8 only in this project
                     }
+                }
+                else if ( u8Command == READ_REGISTER_COMMAND )
+                {
+                    u16ReturnStatus = u16Address;
+                    *DataLength     = GET_RTC_VALUE_LENGTH;
                 }
                 else
                 {

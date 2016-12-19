@@ -88,6 +88,8 @@ void EF_void_PrintMenus_DisplayPhoto (U16_t u16FrameAddress);
 void EF_void_PrintMenus_SendValue (U16_t u16ValueAddress, U32_t u32Value, BOOLEAN b_isValue32bit);
 
 
+void EF_void_PrintMenus_GetRtc ();
+
 void EF_void_PrintMenus_RequestValue (U16_t u16ValueAddress, BOOLEAN b_isValue32bit);
 
 /**************** to remove after that *****************************/

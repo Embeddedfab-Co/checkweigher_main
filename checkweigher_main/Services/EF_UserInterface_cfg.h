@@ -27,6 +27,14 @@
 #define OVERLOAD_WEIGHT_ADD_EEPROM       440           /* The place in EEPROM to Save the OverLoad Package Number */
 
 
+#define PATCH_CORRECT_NUM_EEPROM         468           /* The place in EEPROM to Save the Correct Package Number */
+#define PATCH_UNDERLOAD_PACKAGE_EEPROM   472           /* The place in EEPROM to Save the UnderLoad Package Number */
+#define PATCH_OVERLOAD_PACKAGE_EEPROM    476           /* The place in EEPROM to Save the OverLoad Package Number */
+
+#define PATCH_CORRECT_WEIGHT_EEPROM      480           /* The place in EEPROM to Save the Correct Package Number */
+#define PATCH_UNDERLOAD_WEIGHT_EEPROM    484           /* The place in EEPROM to Save the UnderLoad Package Number */
+#define PATCH_OVERLOAD_WEIGHT_EEPROM     488           /* The place in EEPROM to Save the OverLoad Package Number */
+
 #define MAX_CATEGORY_WEIGTH              100000UL       /* MAx Weight for Category Values */
 #define MIN_CATEGORY_WEIGTH              0
 
@@ -54,21 +62,29 @@
 #define TIMER_EXPIRED_3Months_EEPROM_ADD 444        /* EEPROM ADD to save the 3Month Counter in it to disable Operation if Enabled TRAILS_3_MONTHS */
 
 #define FIRST_RELEASE_FLAG_EEPROM_ADD    448        /* EEPROM ADD to save FirstRelease flag to init Some Varablies when First Realease only */
-#define FIRST_RELEASE_FLAG_VALUE         19         /* Value in EEPROM to checked if it not saved --> init Some Varablies when First Realease only and save it */
+#define FIRST_RELEASE_FLAG_VALUE         21         /* Value in EEPROM to checked if it not saved --> init Some Varablies when First Realease only and save it */
 
 #define BARCODE_MAX_EEPROM               452
 #define TOL_MAX_EEPROM                   456
 #define SCALE_MAX_EEPROM                 460
+#define PASSWORD_EEPROM                  464
 
-#define SCALE_MAX_EEPROM               460
-#define SCALE_MIN_EEPROM               464
-
+#define START_DATE_ADD                   468  /* 0, Year, Month, Day */
+#define START_TIME_ADD                   452  /* 0,    0, hour , Minutes */
 #define RX_BUTTON_FRAME_LENGTH           6          /* The Data Frame Lenght of Button Frame */
 #define GET_VALUE_FRAME_LENGTH           8          /* The Data Frame Lenght of Value  Frame */
 
 #define BUTTON_VALUE_LENGTH              2          /* The Data Lenght of Button Address Value */
 #define DISPLAY_DATA_VALUE_LENGTH        4          /* The Data Lenght of Value  Address Value */
 #define SCREEN_MIN_FRAME_LENGTH          9          /* The Min Screen Frame Length */
+#define GET_RTC_VALUE_LENGTH             7
+
+/* return Array[] = {year, month , day ,00 ,hour, minutes, Seconds}*/
+#define YEAR_ELEMENT                     0
+#define MONTH_ELEMENT                    1
+#define DAY_ELEMENT                      2
+#define HOUR_ELEMENT                     4
+#define MINUTE_ELEMENT                   5
 
 #define TOLERANCE_DEFAULT                50
 #define CAT_WEIGHT_DEFAULT               1000
@@ -80,11 +96,19 @@
 
 #define SCALE_STANDARD_WEIGHT            5000
 
+#define DEFAULT_PASSWORD                 1234
 /* used in Edit tolerance when Save button is pressed , help to get the Two Values Correctly */
 enum FlagStatusAtEditTolerance{
   PREPARE_TO_EDIT,
   FIRST_EDITING,
   SECOND_EDITING
+};
+
+/* define which photo is displayed after password ok, Edit or Parameters */
+enum FlagAfterPasswordEnum{
+  NO_THING,
+  EDIT_AFTER_PASS,
+  PRAM_AFTER_PASS
 };
 
 
@@ -149,5 +173,28 @@ typedef struct {
     U32_t Scale_Max;
     U32_t Tolerance_Max;
     U32_t CatWeight_Max;
-}SystemParametersStr;
+    U32_t Password;
+}SystemParametersStrT;
+
+
+
+typedef struct {
+    U32_t CorrectNum;
+    U32_t CorrectWeight;
+    U32_t OverLoadNum;
+    U32_t OverLoadsWeight;
+    U32_t UnderloadsNum;
+    U32_t UnderloadsWeight;
+}AnalysisStrT;
+
+
+typedef struct {
+    U8_t Minutes;
+    U8_t Hour;
+    U8_t Day;
+    U8_t Month;
+    U8_t Year;
+}TimeDetailsStr;
+
+
 #endif

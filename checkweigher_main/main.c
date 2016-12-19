@@ -24,11 +24,11 @@
 #include "MCAL/EF_TIVA_uart_cfg.h"
 #include "Services/EF_PrintMenus.h"
 #include "Services/EF_PrintMenus_cfg.h"
-
 #include "Utilities/std_types.h"
 
 int main(void)
 {
+
     SysCtlClockSet(SYSCTL_SYSDIV_5|SYSCTL_USE_PLL|SYSCTL_OSC_MAIN|SYSCTL_XTAL_16MHZ);
 
     EF_void_UserInterface_Init ();

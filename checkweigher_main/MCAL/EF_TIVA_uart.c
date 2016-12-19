@@ -249,8 +249,10 @@ int16_t readFromUART()
 
 int16_t getAvailableDataCountOnUART()
 {
+    int16_t returnedValue = 0;
 
-    return (UART_RX_BUFFER_SIZE + UART_RxHead - UART_RxTail) & UART_RX_BUFFER_MASK;
+    returnedValue =  (UART_RX_BUFFER_SIZE + UART_RxHead - UART_RxTail) & UART_RX_BUFFER_MASK;
+    return  returnedValue;
 }
 
 
@@ -280,7 +282,7 @@ BOOLEAN EF_BOOLEAN_UART_GetArray(U8_t UART_Number, U8_t * ReturnedArray, U8_t By
     {
         b_Status = EF_BOOLEAN_UART_GetChar( UART_Number, &ReceviedByte );
 
-        if ( b_Status == TRUE)
+        if ( b_Status == TRUE )
         {
             *(ReturnedArray + index) = ReceviedByte;
             index++;

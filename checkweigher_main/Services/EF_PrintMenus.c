@@ -224,6 +224,15 @@ void EF_void_PrintMenus_RequestValue (U16_t u16ValueAddress, BOOLEAN b_isValue32
     /* todo receive it -- wait or by isr */
 }
 
+void EF_void_PrintMenus_GetRtc ( )
+{
+    EF_BOOLEAN_UART_PutChar( UART_TOUCH_SCREEN, SCREEN_FRAME_HEADER_H);
+    EF_BOOLEAN_UART_PutChar( UART_TOUCH_SCREEN, SCREEN_FRAME_HEADER_L);
+    EF_BOOLEAN_UART_PutChar( UART_TOUCH_SCREEN, 0x03);
+    EF_BOOLEAN_UART_PutChar( UART_TOUCH_SCREEN, READ_REGISTER_COMMAND);
+    EF_BOOLEAN_UART_PutChar( UART_TOUCH_SCREEN, 0x20);
+    EF_BOOLEAN_UART_PutChar( UART_TOUCH_SCREEN, 0x07);
+}
 
 
 

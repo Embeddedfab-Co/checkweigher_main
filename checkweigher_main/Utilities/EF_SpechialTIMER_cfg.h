@@ -35,15 +35,17 @@
 #define SPI_TIMER_ID                7
 #define NEW_OPERATION_TIMER_ID      8       /* timer to goto new Operation after Vaild Operation if Proximixity not used */
 #define ANALYSIS_PRINT_TIMER_ID     9       /* timer to toggle between Analysis Print Cat Numbers and Print Weights */
+#define ERROR_OPERATION_TIMER_ID    10
 
 
-#define UART_WAIT_TIME              50
+#define UART_WAIT_TIME              200
 #define SPI_TIMEOUT                 200
 #define GET_ALL_FRAME_TIMEOUT       200
-#define DISPLAY_ERROR_TIMEOUT       1000
+#define DISPLAY_ERROR_TIMEOUT       3000
 #define GET_OPER_VALUES_TIMEOUT     4000
 #define NEW_OPERATION_TIMEOUT       1000
 #define ANALYSIS_PRINT_TIMEOUT      2000
+#define OPERATION_ERROR_TIMEOUT     1000
 
 /**************************************************
  * configuration types
